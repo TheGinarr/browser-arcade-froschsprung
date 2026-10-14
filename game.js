@@ -41,21 +41,26 @@
    ============================================================ */
 
 import { topliste, spielZuruecksetzen } from "./assets/storage.js";
-import { bewegungReduziert, gameOverDialog, toplisteAnzeigen, zahlHochzaehlen } from "./assets/ui.js";
+import {
+  bewegungReduziert,
+  gameOverDialog,
+  toplisteAnzeigen,
+  zahlHochzaehlen,
+} from "./assets/ui.js";
 import { spielSeite, text, TASTE, ansage } from "./assets/mobil.js";
 import { levelWahl } from "./assets/levelwahl.js";
 
 /* ---------- Konstanten (Stellschrauben des Spiels) ---------- */
-const SPIEL = "froschsprung";          // Schlüssel für den Speicher (storage.js)
-export const SPALTEN = 13;             // Raster: 13 Spalten ...
-export const ZEILEN = 13;              // ... und 13 Zeilen
-const ZELLE = 32;                      // Pixel pro Zelle -> Spielfeld 416 x 416
+const SPIEL = "froschsprung"; // Schlüssel für den Speicher (storage.js)
+export const SPALTEN = 13; // Raster: 13 Spalten ...
+export const ZEILEN = 13; // ... und 13 Zeilen
+const ZELLE = 32; // Pixel pro Zelle -> Spielfeld 416 x 416
 const FELDGROESSE = SPALTEN * ZELLE;
-const PIXEL_SKALA = 2;                 // Canvas intern doppelt so fein: Naturgrafik bleibt scharf
+const PIXEL_SKALA = 2; // Canvas intern doppelt so fein: Naturgrafik bleibt scharf
 
-export const START_SPALTE = 6;         // hier erscheint der Frosch (Mitte)
-export const START_ZEILE = 12;         // unterste Zeile
-export const BUCHT_SPALTEN = [2, 4, 6, 8, 10];   // Spalten der 5 Zielbuchten (Zeile 0)
+export const START_SPALTE = 6; // hier erscheint der Frosch (Mitte)
+export const START_ZEILE = 12; // unterste Zeile
+export const BUCHT_SPALTEN = [2, 4, 6, 8, 10]; // Spalten der 5 Zielbuchten (Zeile 0)
 // Wie weit darf die Frosch-Zelle neben der Buchtmitte liegen und trotzdem
 // einrasten? Die Buchten sind 2 Zellen voneinander entfernt, 0,55 lässt also
 // keine Zweideutigkeit zu, verzeiht aber knappe Sprünge.
@@ -65,44 +70,44 @@ const LEBEN_START = 3;
 const PUNKTE_PRO_REIHE = 10;
 const PUNKTE_PRO_BUCHT = 50;
 const PUNKTE_RUNDENBONUS = 100;
-const PUNKTE_FLIEGE = 200;             // Bonus für eine Bucht mit Fliege
-const PUNKTE_PRO_SEKUNDE = 2;          // Restzeit-Bonus je Sekunde beim Erreichen einer Bucht
+const PUNKTE_FLIEGE = 200; // Bonus für eine Bucht mit Fliege
+const PUNKTE_PRO_SEKUNDE = 2; // Restzeit-Bonus je Sekunde beim Erreichen einer Bucht
 
-const HOP_DAUER = 0.11;                // Sekunden, die ein Sprung dauert (weiches Hüpfen)
-const TOD_DAUER = 0.5;                 // Sekunden Sterbe-Animation
-const SCHUTZ_DAUER = 1.0;              // Sekunden Unverwundbarkeit nach dem Respawn
-const ZIEL_PAUSE = 0.45;               // kurze Pause nach einer besetzten Bucht
-const RUNDEN_PAUSE = 1.4;              // etwas länger, wenn alle Buchten voll sind
-const SCHRITT = 1 / 60;                // fester Zeitschritt der Logik in Sekunden
-const MAX_FRAME_ABSTAND_MS = 250;      // siehe einzelbild()
-const WISCH_SCHWELLE = 24;             // ab so vielen Pixeln zählt es als Wischen
-const ZAEHLER_DAUER_MS = 300;          // Dauer des HUD-Hochzählens
+const HOP_DAUER = 0.11; // Sekunden, die ein Sprung dauert (weiches Hüpfen)
+const TOD_DAUER = 0.5; // Sekunden Sterbe-Animation
+const SCHUTZ_DAUER = 1.0; // Sekunden Unverwundbarkeit nach dem Respawn
+const ZIEL_PAUSE = 0.45; // kurze Pause nach einer besetzten Bucht
+const RUNDEN_PAUSE = 1.4; // etwas länger, wenn alle Buchten voll sind
+const SCHRITT = 1 / 60; // fester Zeitschritt der Logik in Sekunden
+const MAX_FRAME_ABSTAND_MS = 250; // siehe einzelbild()
+const WISCH_SCHWELLE = 24; // ab so vielen Pixeln zählt es als Wischen
+const ZAEHLER_DAUER_MS = 300; // Dauer des HUD-Hochzählens
 
 /* ---------- Hitboxen und Fairness ----------
    Alles ist in ZELLEN angegeben (1 Zelle = 32 Pixel). Die "sichtbaren"
    Rechtecke entsprechen dem, was man auf dem Bildschirm sieht. Für die
    Kollision werden sie noch einmal verkleinert (SCHRUMPF). */
-export const FROSCH_BREITE = 0.8;      // sichtbare Breite/Höhe des Frosches in Zellen
-const FROSCH_RAND = (1 - FROSCH_BREITE) / 2;   // links/oben Luft in der Zelle: 0,1
-export const SCHRUMPF = 0.28;          // Frosch UND Fahrzeug: je 28 % kleiner für die Kollision
-const FAHRZEUG_RAND = 0.06;            // Fahrzeug ist 0,06 Zellen kürzer als sein Platz
-const PLATTFORM_RAND = 0.04;           // Stämme/Seerosen ebenso (die Enden sind gerundet)
-export const WASSER_MINDEST = 0.35;    // so viel Froschbreite muss auf der Plattform liegen
-const RAND_TOLERANZ = 0.1;             // Frosch muss um so viel KOMPLETT aus dem Feld sein
-const EPSILON = 1e-9;                  // Rundungsfehler bei Fließkomma-Vergleichen
+export const FROSCH_BREITE = 0.8; // sichtbare Breite/Höhe des Frosches in Zellen
+const FROSCH_RAND = (1 - FROSCH_BREITE) / 2; // links/oben Luft in der Zelle: 0,1
+export const SCHRUMPF = 0.28; // Frosch UND Fahrzeug: je 28 % kleiner für die Kollision
+const FAHRZEUG_RAND = 0.06; // Fahrzeug ist 0,06 Zellen kürzer als sein Platz
+const PLATTFORM_RAND = 0.04; // Stämme/Seerosen ebenso (die Enden sind gerundet)
+export const WASSER_MINDEST = 0.35; // so viel Froschbreite muss auf der Plattform liegen
+const RAND_TOLERANZ = 0.1; // Frosch muss um so viel KOMPLETT aus dem Feld sein
+const EPSILON = 1e-9; // Rundungsfehler bei Fließkomma-Vergleichen
 
 // Endlos-Modus nach dem letzten festen Level: je Level etwas schneller.
 const TEMPO_SCHRITT = 0.05;
-const TEMPO_MAX = 1.8;                 // Deckel, sonst wird es unspielbar
+const TEMPO_MAX = 1.8; // Deckel, sonst wird es unspielbar
 
 // Schlange auf dem Mittelstreifen (in Zellen)
 export const SCHLANGE_LAENGE = 1.6;
-const SCHLANGE_TEMPO = 1.1;            // Zellen/s, wird mit dem Level-Tempo multipliziert
-const SCHLANGE_HOEHE = 0.42;           // sichtbare Dicke quer zur Bahn
+const SCHLANGE_TEMPO = 1.1; // Zellen/s, wird mit dem Level-Tempo multipliziert
+const SCHLANGE_HOEHE = 0.42; // sichtbare Dicke quer zur Bahn
 
 // Bonusfliege in den Buchten
-const FLIEGE_DAUER = 5;                // Sekunden sichtbar
-const FLIEGE_PAUSE = [5, 9];           // Sekunden bis zur nächsten (zufällig dazwischen)
+const FLIEGE_DAUER = 5; // Sekunden sichtbar
+const FLIEGE_PAUSE = [5, 9]; // Sekunden bis zur nächsten (zufällig dazwischen)
 
 // Krokodil: Kopfbereich am vorderen Ende (in Fahrtrichtung), in Zellen
 export const KROKODIL_KOPF = 0.95;
@@ -110,11 +115,11 @@ export const KROKODIL_MAX_LAENGE = 4;
 
 // Tauchzyklus der Seerosenblätter in Sekunden (siehe tauchSicht)
 const TAUCH_ZYKLUS = 8;
-const TAUCH_WARNUNG_AB = 4.5;          // ab hier wackelt und blubbert die Gruppe (trägt noch)
-const TAUCH_UNTEN_AB = 5.7;            // ab hier ist sie unter Wasser (trägt nicht)
-const TAUCH_OBEN_AB = 7.0;             // ab hier ist sie wieder oben (trägt wieder)
-const TAUCH_SINK_DAUER = 0.25;         // optisches Absinken, nur für die Zeichnung
-const TAUCH_AUF_DAUER = 0.25;          // optisches Auftauchen, nur für die Zeichnung
+const TAUCH_WARNUNG_AB = 4.5; // ab hier wackelt und blubbert die Gruppe (trägt noch)
+const TAUCH_UNTEN_AB = 5.7; // ab hier ist sie unter Wasser (trägt nicht)
+const TAUCH_OBEN_AB = 7.0; // ab hier ist sie wieder oben (trägt wieder)
+const TAUCH_SINK_DAUER = 0.25; // optisches Absinken, nur für die Zeichnung
+const TAUCH_AUF_DAUER = 0.25; // optisches Auftauchen, nur für die Zeichnung
 
 /* ============================================================
    TEIL 1: REINE LOGIK (ohne DOM, in Node testbar)
@@ -151,7 +156,7 @@ export function zeilenArt(y) {
  * zweiten Modulo landet das Ergebnis immer in 0 .. umlauf.
  */
 export function umlaufX(x, laenge, umlauf) {
-  return (((x + laenge) % umlauf) + umlauf) % umlauf - laenge;
+  return ((((x + laenge) % umlauf) + umlauf) % umlauf) - laenge;
 }
 
 /**
@@ -160,12 +165,12 @@ export function umlaufX(x, laenge, umlauf) {
  * einfließen, gehören sie zur Logik und nicht zur Zeichnung.
  */
 export const FAHRZEUG_TYPEN = {
-  kleinwagen:  { laenge: 1.3, hoehe: 0.60 },
-  limousine:   { laenge: 1.6, hoehe: 0.62 },
-  sportwagen:  { laenge: 1.5, hoehe: 0.58 },
+  kleinwagen: { laenge: 1.3, hoehe: 0.6 },
+  limousine: { laenge: 1.6, hoehe: 0.62 },
+  sportwagen: { laenge: 1.5, hoehe: 0.58 },
   lieferwagen: { laenge: 1.9, hoehe: 0.68 },
-  lkw:         { laenge: 3.0, hoehe: 0.72 },   // Fahrerkabine + Planenanhänger
-  tanker:      { laenge: 2.6, hoehe: 0.72 },   // Fahrerkabine + Tankauflieger
+  lkw: { laenge: 3.0, hoehe: 0.72 }, // Fahrerkabine + Planenanhänger
+  tanker: { laenge: 2.6, hoehe: 0.72 }, // Fahrerkabine + Tankauflieger
 };
 
 /**
@@ -186,22 +191,82 @@ export const FAHRZEUG_TYPEN = {
  */
 const BAHN_DEFINITIONEN = {
   // --- Wasser (von oben nach unten: Zeile 1 liegt direkt unter den Buchten) ---
-  1: { art: "stamm",   richtung: -1, tempo: 1.4, laenge: 3, anzahl: 3, abstand: 6,   versatz: 1.5 },
-  2: { art: "seerose", richtung: +1, tempo: 1.9, laenge: 2, anzahl: 4, abstand: 4.5, versatz: 0.5, taucht: [0, 2] },
-  3: { art: "stamm",   richtung: -1, tempo: 2.4, laenge: 6, anzahl: 2, abstand: 10,  versatz: 4 },
-  4: { art: "stamm",   richtung: +1, tempo: 1.8, laenge: 4, anzahl: 2, abstand: 9,   versatz: 2 },
-  5: { art: "seerose", richtung: -1, tempo: 1.5, laenge: 3, anzahl: 3, abstand: 5.5, versatz: 3, taucht: [0, 1, 2] },
+  1: { art: "stamm", richtung: -1, tempo: 1.4, laenge: 3, anzahl: 3, abstand: 6, versatz: 1.5 },
+  2: {
+    art: "seerose",
+    richtung: +1,
+    tempo: 1.9,
+    laenge: 2,
+    anzahl: 4,
+    abstand: 4.5,
+    versatz: 0.5,
+    taucht: [0, 2],
+  },
+  3: { art: "stamm", richtung: -1, tempo: 2.4, laenge: 6, anzahl: 2, abstand: 10, versatz: 4 },
+  4: { art: "stamm", richtung: +1, tempo: 1.8, laenge: 4, anzahl: 2, abstand: 9, versatz: 2 },
+  5: {
+    art: "seerose",
+    richtung: -1,
+    tempo: 1.5,
+    laenge: 3,
+    anzahl: 3,
+    abstand: 5.5,
+    versatz: 3,
+    taucht: [0, 1, 2],
+  },
   // --- Straße (Zeile 7 liegt direkt unter dem Mittelstreifen) ---
-  7:  { art: "fahrzeug", richtung: +1, tempo: 2.6, anzahl: 2, abstand: 8,   versatz: 5,
-        typen: ["lkw", "tanker"], farben: ["#c0392b", "#2e6fb7"], farben2: ["#d8d3c0", "#d9dde0"] },
-  8:  { art: "fahrzeug", richtung: -1, tempo: 2.4, anzahl: 4, abstand: 4,   versatz: 1,
-        typen: ["limousine", "kleinwagen"], farben: ["#2e6fb7", "#f2f2ee", "#c0392b", "#2b2e33"] },
-  9:  { art: "fahrzeug", richtung: +1, tempo: 3.2, anzahl: 3, abstand: 5.5, versatz: 0.5,
-        typen: ["sportwagen", "kleinwagen", "sportwagen"], farben: ["#e8b923", "#7a3b8f", "#c0392b"] },
-  10: { art: "fahrzeug", richtung: -1, tempo: 1.8, anzahl: 2, abstand: 8.5, versatz: 3,
-        typen: ["tanker", "lkw"], farben: ["#f2f2ee", "#2f8a57"], farben2: ["#e9e9e4", "#6f8fb8"] },
-  11: { art: "fahrzeug", richtung: +1, tempo: 2.0, anzahl: 3, abstand: 5,   versatz: 2,
-        typen: ["lieferwagen", "limousine", "kleinwagen"], farben: ["#f2f2ee", "#c9ced3", "#e07a1f"] },
+  7: {
+    art: "fahrzeug",
+    richtung: +1,
+    tempo: 2.6,
+    anzahl: 2,
+    abstand: 8,
+    versatz: 5,
+    typen: ["lkw", "tanker"],
+    farben: ["#c0392b", "#2e6fb7"],
+    farben2: ["#d8d3c0", "#d9dde0"],
+  },
+  8: {
+    art: "fahrzeug",
+    richtung: -1,
+    tempo: 2.4,
+    anzahl: 4,
+    abstand: 4,
+    versatz: 1,
+    typen: ["limousine", "kleinwagen"],
+    farben: ["#2e6fb7", "#f2f2ee", "#c0392b", "#2b2e33"],
+  },
+  9: {
+    art: "fahrzeug",
+    richtung: +1,
+    tempo: 3.2,
+    anzahl: 3,
+    abstand: 5.5,
+    versatz: 0.5,
+    typen: ["sportwagen", "kleinwagen", "sportwagen"],
+    farben: ["#e8b923", "#7a3b8f", "#c0392b"],
+  },
+  10: {
+    art: "fahrzeug",
+    richtung: -1,
+    tempo: 1.8,
+    anzahl: 2,
+    abstand: 8.5,
+    versatz: 3,
+    typen: ["tanker", "lkw"],
+    farben: ["#f2f2ee", "#2f8a57"],
+    farben2: ["#e9e9e4", "#6f8fb8"],
+  },
+  11: {
+    art: "fahrzeug",
+    richtung: +1,
+    tempo: 2.0,
+    anzahl: 3,
+    abstand: 5,
+    versatz: 2,
+    typen: ["lieferwagen", "limousine", "kleinwagen"],
+    farben: ["#f2f2ee", "#c9ced3", "#e07a1f"],
+  },
 };
 
 /**
@@ -219,22 +284,61 @@ const BAHN_DEFINITIONEN = {
  */
 export const LEVEL = [
   { name: "Morgenrunde", tempo: 1.0, zeit: 45 },
-  { name: "Feierabend", tempo: 1.08, zeit: 42,
-    bahnen: { 8: { tempo: 2.8 }, 11: { tempo: 2.4 } } },
+  { name: "Feierabend", tempo: 1.08, zeit: 42, bahnen: { 8: { tempo: 2.8 }, 11: { tempo: 2.4 } } },
   { name: "Fliegenzeit", tempo: 1.12, zeit: 40, fliege: true },
   { name: "Schlange", tempo: 1.16, zeit: 40, fliege: true, schlange: true },
-  { name: "Krokodile", tempo: 1.2, zeit: 38, fliege: true,
-    bahnen: { 3: { krokodile: [1] }, 1: { krokodile: [2] } } },
-  { name: "Kurze Stämme", tempo: 1.24, zeit: 36, fliege: true, schlange: true,
-    bahnen: { 1: { laenge: 2 }, 4: { laenge: 3 } } },
-  { name: "Tauchgang", tempo: 1.28, zeit: 36, fliege: true,
-    bahnen: { 2: { taucht: [0, 1, 2, 3] }, 5: { taucht: [0, 1, 2] }, 3: { krokodile: [1] } } },
-  { name: "Rush Hour", tempo: 1.34, zeit: 34, fliege: true, schlange: true,
-    bahnen: { 7: { tempo: 3.0 }, 8: { tempo: 3.0 }, 9: { tempo: 3.8 }, 10: { tempo: 2.4 } } },
-  { name: "Nachtfahrt", tempo: 1.4, zeit: 32, fliege: true, schlange: true, nacht: true,
-    bahnen: { 3: { krokodile: [0, 1] }, 4: { krokodile: [1] } } },
-  { name: "Meisterprüfung", tempo: 1.48, zeit: 30, fliege: true, schlange: true,
-    bahnen: { 1: { laenge: 2 }, 2: { taucht: [0, 1, 2, 3] }, 3: { krokodile: [1] }, 4: { laenge: 3, krokodile: [0] } } },
+  {
+    name: "Krokodile",
+    tempo: 1.2,
+    zeit: 38,
+    fliege: true,
+    bahnen: { 3: { krokodile: [1] }, 1: { krokodile: [2] } },
+  },
+  {
+    name: "Kurze Stämme",
+    tempo: 1.24,
+    zeit: 36,
+    fliege: true,
+    schlange: true,
+    bahnen: { 1: { laenge: 2 }, 4: { laenge: 3 } },
+  },
+  {
+    name: "Tauchgang",
+    tempo: 1.28,
+    zeit: 36,
+    fliege: true,
+    bahnen: { 2: { taucht: [0, 1, 2, 3] }, 5: { taucht: [0, 1, 2] }, 3: { krokodile: [1] } },
+  },
+  {
+    name: "Rush Hour",
+    tempo: 1.34,
+    zeit: 34,
+    fliege: true,
+    schlange: true,
+    bahnen: { 7: { tempo: 3.0 }, 8: { tempo: 3.0 }, 9: { tempo: 3.8 }, 10: { tempo: 2.4 } },
+  },
+  {
+    name: "Nachtfahrt",
+    tempo: 1.4,
+    zeit: 32,
+    fliege: true,
+    schlange: true,
+    nacht: true,
+    bahnen: { 3: { krokodile: [0, 1] }, 4: { krokodile: [1] } },
+  },
+  {
+    name: "Meisterprüfung",
+    tempo: 1.48,
+    zeit: 30,
+    fliege: true,
+    schlange: true,
+    bahnen: {
+      1: { laenge: 2 },
+      2: { taucht: [0, 1, 2, 3] },
+      3: { krokodile: [1] },
+      4: { laenge: 3, krokodile: [0] },
+    },
+  },
 ];
 
 /** Daten des Levels n (ab 11: Level 10, nur schneller und mit weniger Zeit). */
@@ -261,22 +365,26 @@ export function neueBahnen(level = 1) {
       const typ = def.typen ? def.typen[i % def.typen.length] : null;
       const krokodil = Boolean(def.krokodile?.includes(i));
       objekte.push({
-        x0: i * def.abstand,                          // Startposition der linken Kante
+        x0: i * def.abstand, // Startposition der linken Kante
         // Jedes Objekt kennt seine eigene Länge: So können Fahrzeuge einer Bahn
         // verschieden lang sein (Limousine neben Kleinwagen).
-        laenge: typ ? FAHRZEUG_TYPEN[typ].laenge : krokodil ? Math.min(def.laenge, KROKODIL_MAX_LAENGE) : def.laenge,
+        laenge: typ
+          ? FAHRZEUG_TYPEN[typ].laenge
+          : krokodil
+            ? Math.min(def.laenge, KROKODIL_MAX_LAENGE)
+            : def.laenge,
         krokodil,
         typ,
         farbe: def.farben ? def.farben[i % def.farben.length] : null,
         farbe2: def.farben2 ? def.farben2[i % def.farben2.length] : null,
-        taucht: Boolean(def.taucht?.includes(i)),     // taucht dieses Objekt periodisch?
-        tauchVersatz: i * 2.7,                        // eigene Phase, damit nie alle zugleich tauchen
+        taucht: Boolean(def.taucht?.includes(i)), // taucht dieses Objekt periodisch?
+        tauchVersatz: i * 2.7, // eigene Phase, damit nie alle zugleich tauchen
       });
     }
     bahnen[zeile] = {
       ...def,
       zeile: Number(zeile),
-      laenge: Math.max(...objekte.map((o) => o.laenge)),   // längstes Objekt der Bahn
+      laenge: Math.max(...objekte.map((o) => o.laenge)), // längstes Objekt der Bahn
       umlauf: def.anzahl * def.abstand,
       objekte,
       schub: def.versatz,
@@ -368,8 +476,10 @@ export function tauchSicht(zeit, objekt) {
  */
 export function froschRechteck(x, y) {
   return {
-    x1: x + FROSCH_RAND, x2: x + FROSCH_RAND + FROSCH_BREITE,
-    y1: y + FROSCH_RAND, y2: y + FROSCH_RAND + FROSCH_BREITE,
+    x1: x + FROSCH_RAND,
+    x2: x + FROSCH_RAND + FROSCH_BREITE,
+    y1: y + FROSCH_RAND,
+    y2: y + FROSCH_RAND + FROSCH_BREITE,
   };
 }
 
@@ -383,8 +493,10 @@ export function fahrzeugRechteck(bahn, i) {
   const laenge = objektLaenge(bahn, i);
   const hoehe = FAHRZEUG_TYPEN[bahn.objekte[i].typ].hoehe;
   return {
-    x1: links + FAHRZEUG_RAND, x2: links + laenge - FAHRZEUG_RAND,
-    y1: bahn.zeile + (1 - hoehe) / 2, y2: bahn.zeile + (1 + hoehe) / 2,
+    x1: links + FAHRZEUG_RAND,
+    x2: links + laenge - FAHRZEUG_RAND,
+    y1: bahn.zeile + (1 - hoehe) / 2,
+    y2: bahn.zeile + (1 + hoehe) / 2,
   };
 }
 
@@ -395,8 +507,8 @@ export function fahrzeugRechteck(bahn, i) {
  * Zipfel der Grafik am Auto vorbeistreift, wird nicht getroffen.
  */
 export function verkleinern(r, anteil) {
-  const dx = (r.x2 - r.x1) * anteil / 2;
-  const dy = (r.y2 - r.y1) * anteil / 2;
+  const dx = ((r.x2 - r.x1) * anteil) / 2;
+  const dy = ((r.y2 - r.y1) * anteil) / 2;
   return { x1: r.x1 + dx, x2: r.x2 - dx, y1: r.y1 + dy, y2: r.y2 - dy };
 }
 
@@ -467,7 +579,7 @@ export function findeTraeger(bahn, froschX, zeit) {
 export function einrasten(links, laenge, froschX) {
   const kleinst = links + PLATTFORM_RAND - FROSCH_RAND;
   const groesst = links + laenge - PLATTFORM_RAND - FROSCH_RAND - FROSCH_BREITE;
-  if (groesst < kleinst) return (kleinst + groesst) / 2;   // Plattform schmaler als der Frosch
+  if (groesst < kleinst) return (kleinst + groesst) / 2; // Plattform schmaler als der Frosch
   return Math.min(groesst, Math.max(kleinst, froschX));
 }
 
@@ -478,7 +590,10 @@ export function einrasten(links, laenge, froschX) {
 export function landeAufPlattform(bahn, froschX, zeit) {
   const traeger = findeTraeger(bahn, froschX, zeit);
   if (traeger < 0) return null;
-  return { traeger, x: einrasten(objektLinks(bahn, traeger), objektLaenge(bahn, traeger), froschX) };
+  return {
+    traeger,
+    x: einrasten(objektLinks(bahn, traeger), objektLaenge(bahn, traeger), froschX),
+  };
 }
 
 /**
@@ -530,12 +645,14 @@ export function bewertePosition(bahnen, x, y, zeit, schlange = null) {
     if (ausserhalbFeld(x)) return { art: "rand" };
     const traeger = findeTraeger(bahnen[y], x, zeit);
     if (traeger < 0) return { art: "wasser" };
-    if (bahnen[y].objekte[traeger].krokodil && aufKrokodilKopf(bahnen[y], traeger, x)) return { art: "krokodil" };
+    if (bahnen[y].objekte[traeger].krokodil && aufKrokodilKopf(bahnen[y], traeger, x))
+      return { art: "krokodil" };
     return { art: "sicher", traeger };
   }
   if (art === "mittelstreifen" && schlange) {
     const frosch = verkleinern(froschRechteck(x, y), SCHRUMPF);
-    if (rechteckeUeberlappen(frosch, verkleinern(schlangeRechteck(schlange), 0.15))) return { art: "schlange" };
+    if (rechteckeUeberlappen(frosch, verkleinern(schlangeRechteck(schlange), 0.15)))
+      return { art: "schlange" };
   }
   return { art: "sicher", traeger: -1 };
 }
@@ -555,7 +672,8 @@ export function froschUrteil(frosch, bahnen, zeit, schlange = null) {
   if (frosch.zustand !== "lebt") return null;
   if (frosch.hopT < 1) return null;
   const urteil = bewertePosition(bahnen, frosch.x, frosch.y, zeit, schlange);
-  if ((urteil.art === "auto" || urteil.art === "schlange") && frosch.schutz > 0) return { art: "sicher", traeger: -1, geschuetzt: true };
+  if ((urteil.art === "auto" || urteil.art === "schlange") && frosch.schutz > 0)
+    return { art: "sicher", traeger: -1, geschuetzt: true };
   return urteil;
 }
 
@@ -576,7 +694,7 @@ export function hopZiel(x, y, dx, dy) {
   let neuesX = x + dx;
   if (dx !== 0) {
     neuesX = Math.min(SPALTEN - 1, Math.max(0, neuesX));
-    const echt = neuesX - x;                     // wie weit er wirklich käme
+    const echt = neuesX - x; // wie weit er wirklich käme
     if (echt * dx <= 0 || Math.abs(echt) < 0.25) return null;
   }
   const art = zeilenArt(neuesY);
@@ -626,9 +744,7 @@ export function aufKrokodilKopf(bahn, i, froschX) {
   const links = objektLinks(bahn, i);
   const laenge = objektLaenge(bahn, i);
   const mitte = froschX + 0.5;
-  return bahn.richtung > 0
-    ? mitte > links + laenge - KROKODIL_KOPF
-    : mitte < links + KROKODIL_KOPF;
+  return bahn.richtung > 0 ? mitte > links + laenge - KROKODIL_KOPF : mitte < links + KROKODIL_KOPF;
 }
 
 export function neueSchlange() {
@@ -639,14 +755,22 @@ export function neueSchlange() {
 export function schlangeSchritt(schlange, dt, faktor = 1) {
   schlange.x += schlange.richtung * SCHLANGE_TEMPO * faktor * dt;
   const max = SPALTEN - SCHLANGE_LAENGE;
-  if (schlange.x < 0) { schlange.x = -schlange.x; schlange.richtung = 1; }
-  if (schlange.x > max) { schlange.x = 2 * max - schlange.x; schlange.richtung = -1; }
+  if (schlange.x < 0) {
+    schlange.x = -schlange.x;
+    schlange.richtung = 1;
+  }
+  if (schlange.x > max) {
+    schlange.x = 2 * max - schlange.x;
+    schlange.richtung = -1;
+  }
 }
 
 export function schlangeRechteck(schlange) {
   return {
-    x1: schlange.x, x2: schlange.x + SCHLANGE_LAENGE,
-    y1: 6 + (1 - SCHLANGE_HOEHE) / 2, y2: 6 + (1 + SCHLANGE_HOEHE) / 2,
+    x1: schlange.x,
+    x2: schlange.x + SCHLANGE_LAENGE,
+    y1: 6 + (1 - SCHLANGE_HOEHE) / 2,
+    y2: 6 + (1 + SCHLANGE_HOEHE) / 2,
   };
 }
 
@@ -654,7 +778,7 @@ export function schlangeRechteck(schlange) {
 export function zufallsfolge(samen) {
   let zustand = samen >>> 0;
   return () => {
-    zustand = (zustand + 0x6D2B79F5) >>> 0;
+    zustand = (zustand + 0x6d2b79f5) >>> 0;
     let t = zustand;
     t = Math.imul(t ^ (t >>> 15), t | 1);
     t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
@@ -672,16 +796,36 @@ export function zufallsfolge(samen) {
    Banner-Text, Schriften), kommt weiter aus den CSS-Variablen.
    ============================================================ */
 const NATUR = {
-  gras: "#3f8c37", grasDunkel: "#2d6e2a", grasHell: "#68b350",
-  sand: "#c4ae76", kiesel: "#8d8266",
-  asphalt: "#3a3d42", asphaltHell: "#51555b", asphaltDunkel: "#2c2e32",
-  randstein: "#8a8c87", markWeiss: "#f2f2ea", markGelb: "#f0c030",
-  wasser: "#2c72ab", wasserTief: "#1f5a8f", wasserHell: "#5aa0d2",
-  holz: "#8b5a2b", holzDunkel: "#573418", holzHell: "#b98350", holzEnde: "#d2a671",
-  pad: "#3f9d3b", padDunkel: "#25702a", padHell: "#74c653",
-  hecke: "#1d5524", heckeMittel: "#2a6e2e", heckeHell: "#3a8a3a", erde: "#4b3b25",
-  schilf: "#8d9a3e", kolben: "#6b4423",
-  frosch: "#4ba83c", froschDunkel: "#24692a", froschHell: "#93d35c",
+  gras: "#3f8c37",
+  grasDunkel: "#2d6e2a",
+  grasHell: "#68b350",
+  sand: "#c4ae76",
+  kiesel: "#8d8266",
+  asphalt: "#3a3d42",
+  asphaltHell: "#51555b",
+  asphaltDunkel: "#2c2e32",
+  randstein: "#8a8c87",
+  markWeiss: "#f2f2ea",
+  markGelb: "#f0c030",
+  wasser: "#2c72ab",
+  wasserTief: "#1f5a8f",
+  wasserHell: "#5aa0d2",
+  holz: "#8b5a2b",
+  holzDunkel: "#573418",
+  holzHell: "#b98350",
+  holzEnde: "#d2a671",
+  pad: "#3f9d3b",
+  padDunkel: "#25702a",
+  padHell: "#74c653",
+  hecke: "#1d5524",
+  heckeMittel: "#2a6e2e",
+  heckeHell: "#3a8a3a",
+  erde: "#4b3b25",
+  schilf: "#8d9a3e",
+  kolben: "#6b4423",
+  frosch: "#4ba83c",
+  froschDunkel: "#24692a",
+  froschHell: "#93d35c",
 };
 
 /* ============================================================
@@ -696,7 +840,7 @@ function starteSpiel() {
   // gezeichnet (8-Bit-Raster), Texte danach in voller Auflösung auf das große.
   const hauptZ = leinwand.getContext("2d");
   let z = hauptZ;
-  const PIXEL_RASTER = 0.5;             // 0,5 = 16 x 16 Pixel pro Zelle, wie bei 8-Bit-Konsolen
+  const PIXEL_RASTER = 0.5; // 0,5 = 16 x 16 Pixel pro Zelle, wie bei 8-Bit-Konsolen
   const pixelLeinwand = document.createElement("canvas");
   pixelLeinwand.width = FELDGROESSE * PIXEL_RASTER;
   pixelLeinwand.height = FELDGROESSE * PIXEL_RASTER;
@@ -732,29 +876,29 @@ function starteSpiel() {
   };
 
   /* ---------- Spielzustand ---------- */
-  let bahnen;              // laufende Bahnen (neueBahnen)
-  let frosch;              // Position, Animation, Zustand (siehe froschSetzen)
-  let buchten;             // [true/false x 5]: welche Bucht ist besetzt?
+  let bahnen; // laufende Bahnen (neueBahnen)
+  let frosch; // Position, Animation, Zustand (siehe froschSetzen)
+  let buchten; // [true/false x 5]: welche Bucht ist besetzt?
   let punkte;
   let leben;
   let runde;
-  let spielzeit;           // Sekunden seit Spielstart (für das Tauchen der Seerosen)
-  let hoechsteReihe;       // am weitesten oben erreichte Zeile dieses Versuchs
-  let phase;               // "bereit" | "laeuft" | "pause" | "vorbei"
-  let bannerText = "";     // kurze Einblendung (z. B. "RUNDE 2")
-  let bannerRest = 0;      // Sekunden, die sie noch zu sehen ist
-  let buchtBlitz = [0, 0, 0, 0, 0];   // Aufleuchten frisch besetzter Buchten
+  let spielzeit; // Sekunden seit Spielstart (für das Tauchen der Seerosen)
+  let hoechsteReihe; // am weitesten oben erreichte Zeile dieses Versuchs
+  let phase; // "bereit" | "laeuft" | "pause" | "vorbei"
+  let bannerText = ""; // kurze Einblendung (z. B. "RUNDE 2")
+  let bannerRest = 0; // Sekunden, die sie noch zu sehen ist
+  let buchtBlitz = [0, 0, 0, 0, 0]; // Aufleuchten frisch besetzter Buchten
   let rekordGespeichert = 0;
-  let akkumulator = 0;     // angesammelte, noch nicht verrechnete Zeit in ms
+  let akkumulator = 0; // angesammelte, noch nicht verrechnete Zeit in ms
   let letzteZeit = 0;
   let dialogGezeigt = false;
-  let ruhigerModus = bewegungReduziert();   // wird jeden Frame aktualisiert
-  let ringe = [];          // Deko: Wasserringe / Staubwolke beim Sterben
-  let hintergrundBild = null;   // einmal vorgezeichnetes, unbewegtes Spielfeld
-  let schlange = null;     // { x, richtung } oder null (nur in manchen Leveln)
-  let fliege = null;       // { bucht, rest } oder null
-  let fliegeTimer = 0;     // Sekunden bis zur nächsten Fliege
-  let startLevel = 1;      // gewähltes Start-Level (Level-Auswahl)
+  let ruhigerModus = bewegungReduziert(); // wird jeden Frame aktualisiert
+  let ringe = []; // Deko: Wasserringe / Staubwolke beim Sterben
+  let hintergrundBild = null; // einmal vorgezeichnetes, unbewegtes Spielfeld
+  let schlange = null; // { x, richtung } oder null (nur in manchen Leveln)
+  let fliege = null; // { bucht, rest } oder null
+  let fliegeTimer = 0; // Sekunden bis zur nächsten Fliege
+  let startLevel = 1; // gewähltes Start-Level (Level-Auswahl)
 
   /* ============================================================
      HUD: weich hochzählende Anzeigen
@@ -778,10 +922,13 @@ function starteSpiel() {
         startZeit = performance.now();
         zahlHochzaehlen(element, ziel, ZAEHLER_DAUER_MS);
       } else if (wartet === null) {
-        wartet = setTimeout(() => {
-          wartet = null;
-          setze(ziel);
-        }, ZAEHLER_DAUER_MS - vergangen + 20);
+        wartet = setTimeout(
+          () => {
+            wartet = null;
+            setze(ziel);
+          },
+          ZAEHLER_DAUER_MS - vergangen + 20,
+        );
       }
     }
 
@@ -812,9 +959,11 @@ function starteSpiel() {
 
   function rekordPulsen() {
     hudRekord.classList.remove("rekord-puls");
-    void hudRekord.offsetWidth;   // erzwingt Neuberechnung, damit die Animation neu startet
+    void hudRekord.offsetWidth; // erzwingt Neuberechnung, damit die Animation neu startet
     hudRekord.classList.add("rekord-puls");
-    hudRekord.addEventListener("animationend", () => hudRekord.classList.remove("rekord-puls"), { once: true });
+    hudRekord.addEventListener("animationend", () => hudRekord.classList.remove("rekord-puls"), {
+      once: true,
+    });
   }
 
   /** Punkte gutschreiben, HUD und Rekord nachziehen. */
@@ -825,7 +974,12 @@ function starteSpiel() {
     punkteZaehler.setze(punkte);
     rekordZaehler.setze(rekordLive());
     // Puls nur im Moment des Überholens (bei Rekord 0 gibt es nichts zu überbieten)
-    if (rekordGespeichert > 0 && punkte > rekordGespeichert && vorher <= rekordGespeichert && !ruhigerModus) {
+    if (
+      rekordGespeichert > 0 &&
+      punkte > rekordGespeichert &&
+      vorher <= rekordGespeichert &&
+      !ruhigerModus
+    ) {
       rekordPulsen();
     }
   }
@@ -848,24 +1002,27 @@ function starteSpiel() {
    */
   function froschSetzen(mitSchutz) {
     frosch = {
-      x: START_SPALTE, y: START_ZEILE,
-      vonX: START_SPALTE, vonY: START_ZEILE,
-      zielX: START_SPALTE, zielY: START_ZEILE,
+      x: START_SPALTE,
+      y: START_ZEILE,
+      vonX: START_SPALTE,
+      vonY: START_ZEILE,
+      zielX: START_SPALTE,
+      zielY: START_ZEILE,
       hopT: 1,
-      hopMitX: 0,                            // Tempo des Trägers während eines Seitensprungs im Wasser
-      landungAusstehend: false,              // muss nach dem Sprung noch gelandet (eingerastet) werden?
-      blick: 0,                              // Blickwinkel in Radiant (0 = nach oben)
-      zustand: "lebt",                       // "lebt" | "tot" | "ziel"
-      zustandZeit: 0,                        // Sekunden im aktuellen Zustand
-      todArt: null,                          // "auto" | "wasser" | "rand"
-      alleVoll: false,                       // war das die letzte freie Bucht?
-      stoss: 0,                              // kurzes Wackeln, wenn ein Sprung nicht geht
-      puffer: null,                          // vorgemerkter Sprung (siehe sprungEingabe)
-      schutz: mitSchutz ? SCHUTZ_DAUER : 0,  // Sekunden Unverwundbarkeit gegen Fahrzeuge
-      einrastVersatz: 0,                     // nur Optik: Rest des Einrastens, klingt ab
-      fahrtV: 0,                             // Tempo des Trägers in Zellen/s (für glatte Zeichnung)
-      traeger: -1,                           // Index des Trägers auf der Wasserbahn (-1 = keiner)
-      zeit: levelDaten(runde).zeit,          // Restzeit für diesen Frosch (Zeitbalken)
+      hopMitX: 0, // Tempo des Trägers während eines Seitensprungs im Wasser
+      landungAusstehend: false, // muss nach dem Sprung noch gelandet (eingerastet) werden?
+      blick: 0, // Blickwinkel in Radiant (0 = nach oben)
+      zustand: "lebt", // "lebt" | "tot" | "ziel"
+      zustandZeit: 0, // Sekunden im aktuellen Zustand
+      todArt: null, // "auto" | "wasser" | "rand"
+      alleVoll: false, // war das die letzte freie Bucht?
+      stoss: 0, // kurzes Wackeln, wenn ein Sprung nicht geht
+      puffer: null, // vorgemerkter Sprung (siehe sprungEingabe)
+      schutz: mitSchutz ? SCHUTZ_DAUER : 0, // Sekunden Unverwundbarkeit gegen Fahrzeuge
+      einrastVersatz: 0, // nur Optik: Rest des Einrastens, klingt ab
+      fahrtV: 0, // Tempo des Trägers in Zellen/s (für glatte Zeichnung)
+      traeger: -1, // Index des Trägers auf der Wasserbahn (-1 = keiner)
+      zeit: levelDaten(runde).zeit, // Restzeit für diesen Frosch (Zeitbalken)
     };
     // Neuer Versuch = Reihenzähler zurück auf die Startzeile. Sonst gäbe es
     // nach dem Sterben keine Punkte mehr für bereits erreichte Reihen.
@@ -920,7 +1077,9 @@ function starteSpiel() {
     if (!ruhigerModus) {
       // Wasserringe beim Ertrinken, eine Staubwolke beim Überfahrenwerden. Reine Deko.
       ringe.push({
-        x: (frosch.x + 0.5) * ZELLE, y: (frosch.y + 0.5) * ZELLE, alter: 0,
+        x: (frosch.x + 0.5) * ZELLE,
+        y: (frosch.y + 0.5) * ZELLE,
+        alter: 0,
         farbe: art === "auto" ? "#e6dcb4" : "#ffffff",
       });
     }
@@ -939,23 +1098,32 @@ function starteSpiel() {
     frosch.blick = r.dy < 0 ? 0 : r.dy > 0 ? Math.PI : r.dx > 0 ? Math.PI / 2 : -Math.PI / 2;
 
     const ziel = hopZiel(frosch.x, frosch.y, r.dx, r.dy);
-    if (!ziel) { frosch.stoss = 0.2; return; }          // Feldrand: stehen bleiben
+    if (!ziel) {
+      frosch.stoss = 0.2;
+      return;
+    } // Feldrand: stehen bleiben
 
     // Zeile 0: Nur eine FREIE Bucht lässt den Frosch ein. Hecke oder
     // besetzte Bucht = Sprung wird verweigert (er bleibt unten stehen).
     let bucht = -1;
     if (ziel.y === 0) {
       bucht = buchtFuerX(ziel.x);
-      if (bucht < 0 || buchten[bucht]) { frosch.stoss = 0.2; return; }
-      ziel.x = BUCHT_SPALTEN[bucht];                    // mittig in die Bucht
+      if (bucht < 0 || buchten[bucht]) {
+        frosch.stoss = 0.2;
+        return;
+      }
+      ziel.x = BUCHT_SPALTEN[bucht]; // mittig in die Bucht
     }
 
     // Seitensprung auf einem Stamm: Start- und Zielpunkt wandern während des
     // Sprungs mit dem Träger mit. So hüpft der Frosch genau eine Zelle weit AUF
     // dem Stamm, nicht eine Zelle über das fahrende Wasser.
     frosch.hopMitX = 0;
-    if (r.dy === 0 && zeilenArt(frosch.y) === "wasser" &&
-        findeTraeger(bahnen[frosch.y], frosch.x, spielzeit) >= 0) {
+    if (
+      r.dy === 0 &&
+      zeilenArt(frosch.y) === "wasser" &&
+      findeTraeger(bahnen[frosch.y], frosch.x, spielzeit) >= 0
+    ) {
       frosch.hopMitX = bahnGeschwindigkeit(bahnen[frosch.y], tempoFaktor(runde));
     }
 
@@ -1062,11 +1230,15 @@ function starteSpiel() {
     if (levelDaten(runde).fliege) {
       if (fliege) {
         fliege.rest -= dt;
-        if (fliege.rest <= 0) { fliege = null; fliegeTimer = FLIEGE_PAUSE[0] + Math.random() * (FLIEGE_PAUSE[1] - FLIEGE_PAUSE[0]); }
+        if (fliege.rest <= 0) {
+          fliege = null;
+          fliegeTimer = FLIEGE_PAUSE[0] + Math.random() * (FLIEGE_PAUSE[1] - FLIEGE_PAUSE[0]);
+        }
       } else {
         fliegeTimer -= dt;
         const frei = buchten.map((voll, i) => (voll ? -1 : i)).filter((i) => i >= 0);
-        if (fliegeTimer <= 0 && frei.length > 0) fliege = { bucht: frei[Math.floor(Math.random() * frei.length)], rest: FLIEGE_DAUER };
+        if (fliegeTimer <= 0 && frei.length > 0)
+          fliege = { bucht: frei[Math.floor(Math.random() * frei.length)], rest: FLIEGE_DAUER };
       }
     }
 
@@ -1078,7 +1250,8 @@ function starteSpiel() {
       const k = hopKurve(frosch.hopT);
       frosch.x = frosch.vonX + (frosch.zielX - frosch.vonX) * k;
       frosch.y = frosch.vonY + (frosch.zielY - frosch.vonY) * k;
-      if (frosch.hopT >= 1) {            // exakt im Ziel enden, keine Rundungsreste
+      if (frosch.hopT >= 1) {
+        // exakt im Ziel enden, keine Rundungsreste
         frosch.x = frosch.zielX;
         frosch.y = frosch.zielY;
       }
@@ -1088,7 +1261,8 @@ function starteSpiel() {
     frosch.stoss = Math.max(0, frosch.stoss - dt);
     frosch.einrastVersatz -= frosch.einrastVersatz * Math.min(1, dt * 25);
     if (Math.abs(frosch.einrastVersatz) < 0.001) frosch.einrastVersatz = 0;
-    for (let i = 0; i < buchtBlitz.length; i++) buchtBlitz[i] = Math.max(0, buchtBlitz[i] - dt * 1.6);
+    for (let i = 0; i < buchtBlitz.length; i++)
+      buchtBlitz[i] = Math.max(0, buchtBlitz[i] - dt * 1.6);
     for (const ring of ringe) ring.alter += dt;
     ringe = ringe.filter((ring) => ring.alter < 0.8);
 
@@ -1096,7 +1270,10 @@ function starteSpiel() {
       frosch.schutz = Math.max(0, frosch.schutz - dt);
       // Zeitbalken: läuft nur, solange der Frosch unterwegs ist
       frosch.zeit = Math.max(0, frosch.zeit - dt);
-      if (frosch.zeit <= 0 && frosch.hopT >= 1) { sterben("zeit"); return; }
+      if (frosch.zeit <= 0 && frosch.hopT >= 1) {
+        sterben("zeit");
+        return;
+      }
       // 4. Gelandet? Dann einrasten und urteilen. Erst danach darf der
       // vorgemerkte Sprung starten: Wer die Landung nicht überlebt, hüpft nicht weiter.
       if (frosch.hopT >= 1 && frosch.landungAusstehend) landen();
@@ -1141,7 +1318,7 @@ function starteSpiel() {
       titel: "GAME OVER",
       punkte,
       punkteText: `${punkte} Punkte`,
-      richtung: "hoch",          // MEHR Punkte sind besser
+      richtung: "hoch", // MEHR Punkte sind besser
       format: (p) => `${p} Punkte`,
       neustart: () => neuesSpiel(startLevel),
     });
@@ -1167,13 +1344,14 @@ function starteSpiel() {
   function bestaetigen() {
     if (phase === "bereit") spielStarten();
     else if (phase === "pause") phase = "laeuft";
-    else if (phase === "vorbei" && dialogGezeigt && !document.getElementById("spiel-dialog")) neuesSpiel(startLevel);
+    else if (phase === "vorbei" && dialogGezeigt && !document.getElementById("spiel-dialog"))
+      neuesSpiel(startLevel);
   }
 
   /** Gemeinsame Sprung-Eingabe für Tastatur und Wischen. */
   function richtungsEingabe(r) {
     if (phase === "bereit") {
-      spielStarten();               // die erste Taste startet UND hüpft
+      spielStarten(); // die erste Taste startet UND hüpft
       sprungEingabe(r);
     } else if (phase === "pause") {
       phase = "laeuft";
@@ -1189,10 +1367,14 @@ function starteSpiel() {
      Eingabe: Tastatur
      ============================================================ */
   const TASTEN = {
-    arrowup: { dx: 0, dy: -1 }, w: { dx: 0, dy: -1 },
-    arrowdown: { dx: 0, dy: 1 }, s: { dx: 0, dy: 1 },
-    arrowleft: { dx: -1, dy: 0 }, a: { dx: -1, dy: 0 },
-    arrowright: { dx: 1, dy: 0 }, d: { dx: 1, dy: 0 },
+    arrowup: { dx: 0, dy: -1 },
+    w: { dx: 0, dy: -1 },
+    arrowdown: { dx: 0, dy: 1 },
+    s: { dx: 0, dy: 1 },
+    arrowleft: { dx: -1, dy: 0 },
+    a: { dx: -1, dy: 0 },
+    arrowright: { dx: 1, dy: 0 },
+    d: { dx: 1, dy: 0 },
   };
 
   document.addEventListener("keydown", (ereignis) => {
@@ -1213,7 +1395,7 @@ function starteSpiel() {
     // Leertaste/Enter auf Knopf, Link oder Zusammenklapp-Titel bedient weiter diesen.
     if (istStartTaste && ziel instanceof HTMLElement && ziel.matches("button, a, summary")) return;
 
-    ereignis.preventDefault();             // Pfeile und Leertaste würden sonst scrollen
+    ereignis.preventDefault(); // Pfeile und Leertaste würden sonst scrollen
     // Gehaltene Taste (Auto-Repeat) hüpft nicht endlos weiter: Jeder Sprung
     // soll eine bewusste Entscheidung sein, sonst läuft man ungewollt ins Auto.
     if (ereignis.repeat) return;
@@ -1224,24 +1406,27 @@ function starteSpiel() {
   /* ============================================================
      Eingabe: Wischen und Tippen (Pointer Events)
      ============================================================ */
-  let wischStart = null;       // Punkt, ab dem die aktuelle Geste gemessen wird
-  let hatGewischt = false;     // war die Geste ein Wischen (sonst: ein Tippen)?
+  let wischStart = null; // Punkt, ab dem die aktuelle Geste gemessen wird
+  let hatGewischt = false; // war die Geste ein Wischen (sonst: ein Tippen)?
 
   leinwand.addEventListener("pointerdown", (ereignis) => {
     wischStart = { x: ereignis.clientX, y: ereignis.clientY };
     hatGewischt = false;
-    try { leinwand.setPointerCapture(ereignis.pointerId); } catch { /* egal */ }
+    try {
+      leinwand.setPointerCapture(ereignis.pointerId);
+    } catch {
+      /* egal */
+    }
   });
 
   leinwand.addEventListener("pointermove", (ereignis) => {
-    if (!wischStart || hatGewischt) return;          // pro Geste genau EIN Sprung
+    if (!wischStart || hatGewischt) return; // pro Geste genau EIN Sprung
     const dx = ereignis.clientX - wischStart.x;
     const dy = ereignis.clientY - wischStart.y;
     if (Math.max(Math.abs(dx), Math.abs(dy)) < WISCH_SCHWELLE) return;
     // Die Achse mit der größeren Bewegung gewinnt.
-    const r = Math.abs(dx) > Math.abs(dy)
-      ? { dx: dx > 0 ? 1 : -1, dy: 0 }
-      : { dx: 0, dy: dy > 0 ? 1 : -1 };
+    const r =
+      Math.abs(dx) > Math.abs(dy) ? { dx: dx > 0 ? 1 : -1, dy: 0 } : { dx: 0, dy: dy > 0 ? 1 : -1 };
     hatGewischt = true;
     richtungsEingabe(r);
   });
@@ -1255,7 +1440,9 @@ function starteSpiel() {
     }
     wischStart = null;
   });
-  leinwand.addEventListener("pointercancel", () => { wischStart = null; });
+  leinwand.addEventListener("pointercancel", () => {
+    wischStart = null;
+  });
 
   // Tab-Wechsel pausiert, sonst würde der Frosch im Hintergrund überfahren.
   document.addEventListener("visibilitychange", () => {
@@ -1268,7 +1455,7 @@ function starteSpiel() {
     wahl.neuLaden();
     rekordZaehler.sofort(rekordLive());
     if (phase === "laeuft") phase = "pause";
-    resetKnopf.blur();                     // damit die nächste Leertaste nicht den Knopf drückt
+    resetKnopf.blur(); // damit die nächste Leertaste nicht den Knopf drückt
   });
 
   /* ============================================================
@@ -1364,9 +1551,13 @@ function starteSpiel() {
       const x = 10 + zufall() * (FELDGROESSE - 20);
       const y = y0 + 8 + zufall() * (ZELLE - 16);
       b.fillStyle = "#f6f6ef";
-      b.beginPath(); b.arc(x, y, 1.6, 0, Math.PI * 2); b.fill();
+      b.beginPath();
+      b.arc(x, y, 1.6, 0, Math.PI * 2);
+      b.fill();
       b.fillStyle = "#f0c030";
-      b.beginPath(); b.arc(x, y, 0.7, 0, Math.PI * 2); b.fill();
+      b.beginPath();
+      b.arc(x, y, 0.7, 0, Math.PI * 2);
+      b.fill();
     }
   }
 
@@ -1376,15 +1567,23 @@ function starteSpiel() {
     b.fillStyle = NATUR.sand;
     b.beginPath();
     b.moveTo(0, y0);
-    for (let x = 0; x <= FELDGROESSE; x += 8) b.lineTo(x, y0 + 3.5 + Math.sin(x * 0.13) * 1.4 + zufall() * 1.2);
+    for (let x = 0; x <= FELDGROESSE; x += 8)
+      b.lineTo(x, y0 + 3.5 + Math.sin(x * 0.13) * 1.4 + zufall() * 1.2);
     b.lineTo(FELDGROESSE, y0);
     b.closePath();
     b.fill();
-    b.fillStyle = "rgba(60,40,10,0.18)";                 // feuchter Saum zum Wasser hin
+    b.fillStyle = "rgba(60,40,10,0.18)"; // feuchter Saum zum Wasser hin
     b.fillRect(0, y0, FELDGROESSE, 1.5);
-    for (let k = 0; k < 34; k++) {                       // Kieselsteine
+    for (let k = 0; k < 34; k++) {
+      // Kieselsteine
       b.fillStyle = zufall() < 0.5 ? NATUR.kiesel : "#b3a98a";
-      ellipse(b, zufall() * FELDGROESSE, y0 + 1.5 + zufall() * 3.5, 0.9 + zufall() * 1.3, 0.7 + zufall() * 0.7);
+      ellipse(
+        b,
+        zufall() * FELDGROESSE,
+        y0 + 1.5 + zufall() * 3.5,
+        0.9 + zufall() * 1.3,
+        0.7 + zufall() * 0.7,
+      );
       b.fill();
     }
   }
@@ -1442,7 +1641,13 @@ function starteSpiel() {
     // weiche Flecken in Hell und Dunkel: Tiefe im Wasser
     for (let k = 0; k < 46; k++) {
       b.fillStyle = zufall() < 0.5 ? "rgba(255,255,255,0.045)" : "rgba(0,20,60,0.07)";
-      ellipse(b, zufall() * FELDGROESSE, y0 + zufall() * hoehe, 14 + zufall() * 26, 4 + zufall() * 7);
+      ellipse(
+        b,
+        zufall() * FELDGROESSE,
+        y0 + zufall() * hoehe,
+        14 + zufall() * 26,
+        4 + zufall() * 7,
+      );
       b.fill();
     }
     // Schatten der Hecke auf dem Wasser
@@ -1459,7 +1664,8 @@ function starteSpiel() {
     c.translate(cx, cy);
     const skala = 1 - 0.15 * tiefe;
     c.scale(skala, skala);
-    if (tiefe < 0.8) {                                     // Schatten auf dem Wasser
+    if (tiefe < 0.8) {
+      // Schatten auf dem Wasser
       c.fillStyle = `rgba(0,25,45,${0.28 * (1 - tiefe)})`;
       ellipse(c, 1.5, 2.5, radius, radius * 0.95);
       c.fill();
@@ -1495,7 +1701,8 @@ function starteSpiel() {
     c.fillStyle = "rgba(255,255,255,0.16)";
     ellipse(c, -radius * 0.3, -radius * 0.35, radius * 0.32, radius * 0.16, -0.6);
     c.fill();
-    if (blume && tiefe < 0.5) {                            // kleine rosa Seerosenblüte
+    if (blume && tiefe < 0.5) {
+      // kleine rosa Seerosenblüte
       for (let k = 0; k < 8; k++) {
         c.save();
         c.rotate((k * Math.PI) / 4);
@@ -1505,9 +1712,12 @@ function starteSpiel() {
         c.restore();
       }
       c.fillStyle = "#f4cf3c";
-      c.beginPath(); c.arc(0, 0, 1.9, 0, Math.PI * 2); c.fill();
+      c.beginPath();
+      c.arc(0, 0, 1.9, 0, Math.PI * 2);
+      c.fill();
     }
-    if (tiefe > 0) {                                       // unter Wasser: bläulich überdeckt
+    if (tiefe > 0) {
+      // unter Wasser: bläulich überdeckt
       blattPfad();
       c.fillStyle = NATUR.wasser;
       c.globalAlpha = Math.min(0.88, tiefe * 0.95);
@@ -1537,7 +1747,7 @@ function starteSpiel() {
     // Schilf in den Heckenzellen zwischen den Buchten
     for (let s = 0; s < SPALTEN; s++) {
       if (BUCHT_SPALTEN.includes(s)) continue;
-      if (s % 2 === 0) continue;                           // Zellen 1, 3, 5, ... 11 bekommen Schilf
+      if (s % 2 === 0) continue; // Zellen 1, 3, 5, ... 11 bekommen Schilf
       for (let k = 0; k < 4; k++) {
         const x = s * ZELLE + 6 + k * 6 + zufall() * 3;
         const spitze = 5 + zufall() * 9;
@@ -1547,7 +1757,8 @@ function starteSpiel() {
         b.moveTo(x, 30);
         b.quadraticCurveTo(x + (zufall() - 0.5) * 6, 18, x + (zufall() - 0.5) * 5, spitze);
         b.stroke();
-        if (k % 2 === 0) {                                   // Rohrkolben
+        if (k % 2 === 0) {
+          // Rohrkolben
           b.fillStyle = NATUR.kolben;
           ellipse(b, x + (k - 1) * 0.5, spitze + 4, 1.7, 4.6);
           b.fill();
@@ -1567,7 +1778,7 @@ function starteSpiel() {
       b.fillStyle = wasser;
       rundesRechteck(b, x + 2, 4, ZELLE - 4, ZELLE - 4, 3);
       b.fill();
-      b.fillStyle = "rgba(255,255,255,0.08)";             // kleine Glanzstriche im Wasser
+      b.fillStyle = "rgba(255,255,255,0.08)"; // kleine Glanzstriche im Wasser
       b.fillRect(x + 5, 9, 8, 1);
       b.fillRect(x + 19, 25, 7, 1);
       zeichneSeerosenblatt(b, x + ZELLE / 2, 19, 9, 0.9 + i * 1.3, 0, i % 2 === 1);
@@ -1604,9 +1815,9 @@ function starteSpiel() {
   //   scheibe: vordere Kante der Frontscheibe, tiefe: wie lang die Scheibe ist
   //   dachEnde: hintere Dachkante, heck: Länge der Heckscheibe
   const PKW_FORM = {
-    limousine:  { scheibe: 0.21, tiefe: 0.09, dachEnde: -0.13, heck: 0.10, streifen: false },
+    limousine: { scheibe: 0.21, tiefe: 0.09, dachEnde: -0.13, heck: 0.1, streifen: false },
     kleinwagen: { scheibe: 0.17, tiefe: 0.12, dachEnde: -0.19, heck: 0.11, streifen: false },
-    sportwagen: { scheibe: 0.10, tiefe: 0.15, dachEnde: -0.14, heck: 0.11, streifen: true },
+    sportwagen: { scheibe: 0.1, tiefe: 0.15, dachEnde: -0.14, heck: 0.11, streifen: true },
   };
 
   const GLAS = "#25323e";
@@ -1620,10 +1831,10 @@ function starteSpiel() {
       fleck.addColorStop(1, "rgba(255,240,170,0)");
       c.fillStyle = fleck;
       c.fillRect(L / 2 - 2, s * abstand - 10, 20, 20);
-      c.fillStyle = "#fff6c4";                           // Scheinwerfer
+      c.fillStyle = "#fff6c4"; // Scheinwerfer
       rundesRechteck(c, L / 2 - 4.2, s * abstand - 1.8, 3.6, 3.6, 1.2);
       c.fill();
-      c.fillStyle = "#e0302a";                           // Rücklicht
+      c.fillStyle = "#e0302a"; // Rücklicht
       rundesRechteck(c, -L / 2 - 0.2, s * abstand - 1.8, 2.6, 3.6, 1);
       c.fill();
     }
@@ -1650,7 +1861,8 @@ function starteSpiel() {
     c.strokeStyle = "rgba(0,0,0,0.35)";
     c.lineWidth = 0.8;
     c.stroke();
-    if (f.streifen) {                                    // Rennstreifen beim Sportwagen
+    if (f.streifen) {
+      // Rennstreifen beim Sportwagen
       c.fillStyle = "rgba(255,255,255,0.8)";
       c.fillRect(-L / 2 + 2, -2.6, L * 0.62, 1.8);
       c.fillRect(-L / 2 + 2, 0.8, L * 0.62, 1.8);
@@ -1662,11 +1874,17 @@ function starteSpiel() {
     const x4 = x3 - L * f.heck;
     c.fillStyle = GLAS;
     c.beginPath();
-    c.moveTo(x1, -H * 0.41); c.lineTo(x2, -H * 0.34); c.lineTo(x2, H * 0.34); c.lineTo(x1, H * 0.41);
+    c.moveTo(x1, -H * 0.41);
+    c.lineTo(x2, -H * 0.34);
+    c.lineTo(x2, H * 0.34);
+    c.lineTo(x1, H * 0.41);
     c.closePath();
     c.fill();
     c.beginPath();
-    c.moveTo(x3, -H * 0.34); c.lineTo(x4, -H * 0.39); c.lineTo(x4, H * 0.39); c.lineTo(x3, H * 0.34);
+    c.moveTo(x3, -H * 0.34);
+    c.lineTo(x4, -H * 0.39);
+    c.lineTo(x4, H * 0.39);
+    c.lineTo(x3, H * 0.34);
     c.closePath();
     c.fill();
     rundesRechteck(c, x3, -H * 0.34, x2 - x3, H * 0.68, 2);
@@ -1676,9 +1894,10 @@ function starteSpiel() {
     c.fill();
     c.strokeStyle = "rgba(0,0,0,0.3)";
     c.stroke();
-    c.strokeStyle = "rgba(255,255,255,0.3)";              // Spiegelung auf der Frontscheibe
+    c.strokeStyle = "rgba(255,255,255,0.3)"; // Spiegelung auf der Frontscheibe
     c.beginPath();
-    c.moveTo(x1 - 0.8, -H * 0.3); c.lineTo(x2 + 1, -H * 0.06);
+    c.moveTo(x1 - 0.8, -H * 0.3);
+    c.lineTo(x2 + 1, -H * 0.06);
     c.stroke();
     // Außenspiegel
     c.fillStyle = farbe;
@@ -1711,7 +1930,10 @@ function starteSpiel() {
     const x2 = L * 0.28;
     c.fillStyle = GLAS;
     c.beginPath();
-    c.moveTo(x1, -H * 0.4); c.lineTo(x2, -H * 0.37); c.lineTo(x2, H * 0.37); c.lineTo(x1, H * 0.4);
+    c.moveTo(x1, -H * 0.4);
+    c.lineTo(x2, -H * 0.37);
+    c.lineTo(x2, H * 0.37);
+    c.lineTo(x1, H * 0.4);
     c.closePath();
     c.fill();
     rundesRechteck(c, -L / 2 + 2, -H / 2 + 2.4, x2 - (-L / 2 + 2) - 1, H - 4.8, 2);
@@ -1725,11 +1947,12 @@ function starteSpiel() {
       c.lineTo(x, H / 2 - 3);
     }
     c.stroke();
-    c.strokeStyle = "rgba(0,0,0,0.35)";                   // Hecktür-Fuge
+    c.strokeStyle = "rgba(0,0,0,0.35)"; // Hecktür-Fuge
     c.beginPath();
-    c.moveTo(-L / 2 + 5, -H / 2 + 1.5); c.lineTo(-L / 2 + 5, H / 2 - 1.5);
+    c.moveTo(-L / 2 + 5, -H / 2 + 1.5);
+    c.lineTo(-L / 2 + 5, H / 2 - 1.5);
     c.stroke();
-    c.fillStyle = "#3a3d42";                               // große Außenspiegel
+    c.fillStyle = "#3a3d42"; // große Außenspiegel
     for (const s of [-1, 1]) {
       rundesRechteck(c, x2 - 1, s * (H / 2 + 0.5) - 1.3, 4.5, 2.6, 1);
       c.fill();
@@ -1752,13 +1975,13 @@ function starteSpiel() {
     c.strokeStyle = "rgba(0,0,0,0.4)";
     c.lineWidth = 0.8;
     c.stroke();
-    rundesRechteck(c, L / 2 - 7.5, -H / 2 + 3.8, 5, H - 7.6, 1.5);   // Windschutzscheibe
+    rundesRechteck(c, L / 2 - 7.5, -H / 2 + 3.8, 5, H - 7.6, 1.5); // Windschutzscheibe
     c.fillStyle = GLAS;
     c.fill();
-    rundesRechteck(c, x + 3, -H / 2 + 4, 9, H - 8, 2);               // Dach mit Lüftungsklappe
+    rundesRechteck(c, x + 3, -H / 2 + 4, 9, H - 8, 2); // Dach mit Lüftungsklappe
     c.fillStyle = "rgba(255,255,255,0.13)";
     c.fill();
-    c.fillStyle = "#1c1e22";                                          // Spiegel
+    c.fillStyle = "#1c1e22"; // Spiegel
     for (const s of [-1, 1]) {
       rundesRechteck(c, L / 2 - 11, s * (H / 2 - 0.6) - 1.2, 3.4, 2.4, 1);
       c.fill();
@@ -1797,10 +2020,12 @@ function starteSpiel() {
       c.moveTo(x, -H / 2 + 1.6);
       c.lineTo(x, H / 2 - 1.6);
     }
-    c.moveTo(-L / 2 + 3, -H * 0.22); c.lineTo(-L / 2 + anhaenger - 3, -H * 0.22);
-    c.moveTo(-L / 2 + 3, H * 0.22); c.lineTo(-L / 2 + anhaenger - 3, H * 0.22);
+    c.moveTo(-L / 2 + 3, -H * 0.22);
+    c.lineTo(-L / 2 + anhaenger - 3, -H * 0.22);
+    c.moveTo(-L / 2 + 3, H * 0.22);
+    c.lineTo(-L / 2 + anhaenger - 3, H * 0.22);
     c.stroke();
-    c.fillStyle = farbe;                                  // Firmenstreifen in Kabinenfarbe
+    c.fillStyle = farbe; // Firmenstreifen in Kabinenfarbe
     c.globalAlpha = 0.65;
     c.fillRect(-L / 2 + 10, -1.5, anhaenger - 20, 3);
     c.globalAlpha = 1;
@@ -1832,7 +2057,7 @@ function starteSpiel() {
     c.strokeStyle = "rgba(0,0,0,0.4)";
     c.lineWidth = 0.9;
     c.stroke();
-    c.strokeStyle = "rgba(0,0,0,0.28)";                   // Schweißnähte / Spannbänder
+    c.strokeStyle = "rgba(0,0,0,0.28)"; // Schweißnähte / Spannbänder
     c.lineWidth = 1.2;
     c.beginPath();
     for (const bx of [0.2, 0.5, 0.8]) {
@@ -1840,9 +2065,11 @@ function starteSpiel() {
       c.lineTo(-L / 2 + tank * bx, H / 2 - 2);
     }
     c.stroke();
-    c.fillStyle = "#6e7479";                              // Einstiegsluken
+    c.fillStyle = "#6e7479"; // Einstiegsluken
     for (const bx of [0.35, 0.65]) {
-      c.beginPath(); c.arc(-L / 2 + tank * bx, 0, 2.6, 0, Math.PI * 2); c.fill();
+      c.beginPath();
+      c.arc(-L / 2 + tank * bx, 0, 2.6, 0, Math.PI * 2);
+      c.fill();
       c.strokeStyle = "rgba(0,0,0,0.45)";
       c.lineWidth = 0.8;
       c.stroke();
@@ -1854,7 +2081,7 @@ function starteSpiel() {
   /** Zeichnet das Fahrzeug Nr. i der Bahn an seiner (mit Vorgriff verschobenen) Stelle. */
   function zeichneFahrzeug(links, zeile, bahn, objekt) {
     const typ = FAHRZEUG_TYPEN[objekt.typ];
-    const L = objekt.laenge * ZELLE - 2 * FAHRZEUG_RAND * ZELLE;   // sichtbare Länge in Pixeln
+    const L = objekt.laenge * ZELLE - 2 * FAHRZEUG_RAND * ZELLE; // sichtbare Länge in Pixeln
     const H = typ.hoehe * ZELLE;
     z.save();
     z.translate((links + objekt.laenge / 2) * ZELLE, zeile * ZELLE + ZELLE / 2);
@@ -1864,7 +2091,8 @@ function starteSpiel() {
     rundesRechteck(z, -L / 2 + 0.5, -H / 2 + 2.5, L, H, H * 0.3);
     z.fill();
     if (objekt.typ === "lkw") zeichneLkw(z, L, H, objekt.farbe, objekt.farbe2 ?? "#d8d3c0");
-    else if (objekt.typ === "tanker") zeichneTanker(z, L, H, objekt.farbe, objekt.farbe2 ?? "#d9dde0");
+    else if (objekt.typ === "tanker")
+      zeichneTanker(z, L, H, objekt.farbe, objekt.farbe2 ?? "#d9dde0");
     else if (objekt.typ === "lieferwagen") zeichneLieferwagen(z, L, H, objekt.farbe);
     else zeichnePkw(z, objekt.typ, L, H, objekt.farbe);
     z.restore();
@@ -1949,8 +2177,10 @@ function starteSpiel() {
       z.strokeStyle = "rgba(60,35,12,0.75)";
       z.lineWidth = 0.9;
       z.stroke();
-      ellipse(z, ex, ey, 3, 6.6); z.stroke();
-      ellipse(z, ex, ey, 1.4, 3.2); z.stroke();
+      ellipse(z, ex, ey, 3, 6.6);
+      z.stroke();
+      ellipse(z, ex, ey, 1.4, 3.2);
+      z.stroke();
     }
     z.restore();
   }
@@ -1964,7 +2194,7 @@ function starteSpiel() {
       const phase0 = zufall();
       const bx = cx + (zufall() - 0.5) * 20;
       const r = 1 + zufall() * 1.7;
-      const lauf = ruhigerModus ? 0.4 : ((jetzt / 800 + phase0) % 1);
+      const lauf = ruhigerModus ? 0.4 : (jetzt / 800 + phase0) % 1;
       z.globalAlpha = 0.75 * (1 - lauf);
       z.strokeStyle = "#ffffff";
       z.beginPath();
@@ -2047,7 +2277,10 @@ function starteSpiel() {
       const knieY = mix(1, 15, haltung);
       const fussX = mix(10, 8.5, haltung) * s;
       const fussY = mix(12, 24, haltung);
-      for (const [breite, farbe] of [[6.4, NATUR.froschDunkel], [4.4, NATUR.frosch]]) {
+      for (const [breite, farbe] of [
+        [6.4, NATUR.froschDunkel],
+        [4.4, NATUR.frosch],
+      ]) {
         c.strokeStyle = farbe;
         c.lineWidth = breite;
         c.beginPath();
@@ -2056,7 +2289,7 @@ function starteSpiel() {
         c.lineTo(fussX, fussY);
         c.stroke();
       }
-      c.strokeStyle = NATUR.froschDunkel;                  // Zehen: drei kurze Striche
+      c.strokeStyle = NATUR.froschDunkel; // Zehen: drei kurze Striche
       c.lineWidth = 1.5;
       c.beginPath();
       for (const a of [-0.6, 0, 0.6]) {
@@ -2069,7 +2302,10 @@ function starteSpiel() {
       const ellY = mix(0, -11, haltung);
       const handX = mix(8.5, 6, haltung) * s;
       const handY = mix(-8, -19, haltung);
-      for (const [breite, farbe] of [[4.6, NATUR.froschDunkel], [3, NATUR.frosch]]) {
+      for (const [breite, farbe] of [
+        [4.6, NATUR.froschDunkel],
+        [3, NATUR.frosch],
+      ]) {
         c.strokeStyle = farbe;
         c.lineWidth = breite;
         c.beginPath();
@@ -2078,7 +2314,7 @@ function starteSpiel() {
         c.lineTo(handX, handY);
         c.stroke();
       }
-      c.strokeStyle = NATUR.froschDunkel;                  // Finger
+      c.strokeStyle = NATUR.froschDunkel; // Finger
       c.lineWidth = 1.2;
       c.beginPath();
       for (const a of [-0.5, 0, 0.5]) {
@@ -2095,17 +2331,29 @@ function starteSpiel() {
     koerper.addColorStop(1, NATUR.froschDunkel);
     c.strokeStyle = NATUR.froschDunkel;
     c.lineWidth = 2.6;
-    ellipse(c, 0, 2, 8.4, 11.5); c.stroke();
-    ellipse(c, 0, -8, 7, 5.8); c.stroke();
+    ellipse(c, 0, 2, 8.4, 11.5);
+    c.stroke();
+    ellipse(c, 0, -8, 7, 5.8);
+    c.stroke();
     c.fillStyle = koerper;
-    ellipse(c, 0, 2, 8.4, 11.5); c.fill();
-    ellipse(c, 0, -8, 7, 5.8); c.fill();
+    ellipse(c, 0, 2, 8.4, 11.5);
+    c.fill();
+    ellipse(c, 0, -8, 7, 5.8);
+    c.fill();
     // Rückenstreifen und dunkle Flecken
     c.fillStyle = "rgba(170,225,110,0.5)";
-    ellipse(c, 0, 1, 1.5, 9); c.fill();
+    ellipse(c, 0, 1, 1.5, 9);
+    c.fill();
     c.fillStyle = "rgba(25,85,30,0.55)";
-    for (const [fx, fy, fr] of [[-4.2, -1, 1.9], [4.4, 1.5, 2.1], [-3.4, 6.5, 1.8], [3.6, 8, 1.6], [-1.5, -5, 1.2]]) {
-      ellipse(c, fx, fy, fr, fr * 0.8); c.fill();
+    for (const [fx, fy, fr] of [
+      [-4.2, -1, 1.9],
+      [4.4, 1.5, 2.1],
+      [-3.4, 6.5, 1.8],
+      [3.6, 8, 1.6],
+      [-1.5, -5, 1.2],
+    ]) {
+      ellipse(c, fx, fy, fr, fr * 0.8);
+      c.fill();
     }
     // Augen: Wülste auf dem Kopf mit gelber Iris
     for (const s of [-1, 1]) {
@@ -2114,29 +2362,43 @@ function starteSpiel() {
       c.fillStyle = NATUR.frosch;
       c.strokeStyle = NATUR.froschDunkel;
       c.lineWidth = 1.2;
-      c.beginPath(); c.arc(ex, ey, 3.9, 0, Math.PI * 2); c.fill(); c.stroke();
+      c.beginPath();
+      c.arc(ex, ey, 3.9, 0, Math.PI * 2);
+      c.fill();
+      c.stroke();
       if (tot) {
         c.fillStyle = "#f3f3e8";
-        c.beginPath(); c.arc(ex, ey, 2.7, 0, Math.PI * 2); c.fill();
-        c.strokeStyle = "#1b1b1b";                         // X-Augen
+        c.beginPath();
+        c.arc(ex, ey, 2.7, 0, Math.PI * 2);
+        c.fill();
+        c.strokeStyle = "#1b1b1b"; // X-Augen
         c.lineWidth = 1.3;
         c.beginPath();
-        c.moveTo(ex - 1.6, ey - 1.6); c.lineTo(ex + 1.6, ey + 1.6);
-        c.moveTo(ex + 1.6, ey - 1.6); c.lineTo(ex - 1.6, ey + 1.6);
+        c.moveTo(ex - 1.6, ey - 1.6);
+        c.lineTo(ex + 1.6, ey + 1.6);
+        c.moveTo(ex + 1.6, ey - 1.6);
+        c.lineTo(ex - 1.6, ey + 1.6);
         c.stroke();
       } else {
         c.fillStyle = "#f2dc6a";
-        c.beginPath(); c.arc(ex, ey, 2.7, 0, Math.PI * 2); c.fill();
+        c.beginPath();
+        c.arc(ex, ey, 2.7, 0, Math.PI * 2);
+        c.fill();
         c.fillStyle = "#101010";
-        ellipse(c, ex, ey, 1.5, 1.8); c.fill();
+        ellipse(c, ex, ey, 1.5, 1.8);
+        c.fill();
         c.fillStyle = "rgba(255,255,255,0.9)";
-        c.beginPath(); c.arc(ex - 0.6, ey - 0.8, 0.6, 0, Math.PI * 2); c.fill();
+        c.beginPath();
+        c.arc(ex - 0.6, ey - 0.8, 0.6, 0, Math.PI * 2);
+        c.fill();
       }
     }
     // Nasenlöcher
     c.fillStyle = "rgba(20,60,25,0.8)";
     for (const s of [-1, 1]) {
-      c.beginPath(); c.arc(1.4 * s, -13.2, 0.55, 0, Math.PI * 2); c.fill();
+      c.beginPath();
+      c.arc(1.4 * s, -13.2, 0.55, 0, Math.PI * 2);
+      c.fill();
     }
     c.restore();
   }
@@ -2149,7 +2411,7 @@ function starteSpiel() {
   }
 
   function froschSichtbar() {
-    return !(frosch.zustand === "ziel" && frosch.hopT >= 1);   // sitzt schon in der Bucht
+    return !(frosch.zustand === "ziel" && frosch.hopT >= 1); // sitzt schon in der Bucht
   }
 
   /** Zeichnet den Frosch: lebend (hüpfend/sitzend/blinkend) oder in der Sterbe-Animation. */
@@ -2183,7 +2445,12 @@ function starteSpiel() {
     let skala = 1 + luft * 0.16;
     let wackelX = frosch.stoss > 0 && !ruhigerModus ? Math.sin(frosch.stoss * 70) * 3 : 0;
     // Sitzt der Frosch auf einem wackelnden/sinkenden Seerosenblatt, macht er es mit.
-    if (frosch.zustand === "lebt" && frosch.hopT >= 1 && frosch.traeger >= 0 && zeilenArt(frosch.y) === "wasser") {
+    if (
+      frosch.zustand === "lebt" &&
+      frosch.hopT >= 1 &&
+      frosch.traeger >= 0 &&
+      zeilenArt(frosch.y) === "wasser"
+    ) {
       const bahn = bahnen[frosch.y];
       if (bahn.art === "seerose") {
         const sicht = tauchSicht(spielzeit, bahn.objekte[frosch.traeger]);
@@ -2195,10 +2462,10 @@ function starteSpiel() {
     }
     // Unverwundbar: der Frosch blinkt (reduziert: dauerhaft leicht blass)
     let alpha = 1;
-    if (frosch.schutz > 0) alpha = ruhigerModus ? 0.6 : (Math.floor(jetzt / 90) % 2 === 0 ? 1 : 0.35);
+    if (frosch.schutz > 0) alpha = ruhigerModus ? 0.6 : Math.floor(jetzt / 90) % 2 === 0 ? 1 : 0.35;
 
     z.save();
-    z.globalAlpha = alpha * 0.28;                           // Schatten
+    z.globalAlpha = alpha * 0.28; // Schatten
     z.fillStyle = "#0a1a10";
     ellipse(z, x + 2, y + 3.5, 10.5 * (1 - luft * 0.2), 12 * (1 - luft * 0.2));
     z.fill();
@@ -2230,7 +2497,7 @@ function starteSpiel() {
     }
     z.textAlign = "right";
     z.textBaseline = "middle";
-    z.shadowColor = "rgba(0,30,0,0.8)";                      // dunkler Rand, damit die Schrift auf Gras lesbar bleibt
+    z.shadowColor = "rgba(0,30,0,0.8)"; // dunkler Rand, damit die Schrift auf Gras lesbar bleibt
     z.shadowBlur = 3;
     z.fillStyle = "#f4f7ea";
     z.font = `10px ${farben.schriftPixel}`;
@@ -2245,7 +2512,12 @@ function starteSpiel() {
       if (!buchten[i]) continue;
       const x = BUCHT_SPALTEN[i] * ZELLE;
       // Der Frosch springt gerade erst hinein: dann zeichnet zeichneFrosch() ihn noch selbst.
-      if (frosch.zustand === "ziel" && frosch.hopT < 1 && Math.abs(frosch.zielX - BUCHT_SPALTEN[i]) < 0.01) continue;
+      if (
+        frosch.zustand === "ziel" &&
+        frosch.hopT < 1 &&
+        Math.abs(frosch.zielX - BUCHT_SPALTEN[i]) < 0.01
+      )
+        continue;
       const blitz = ruhigerModus ? 0 : buchtBlitz[i];
       zeichneFroschKoerper(z, x + ZELLE / 2, 19, 0, 0.78 + blitz * 0.2, 0.78 + blitz * 0.2);
       if (blitz > 0) {
@@ -2275,7 +2547,8 @@ function starteSpiel() {
       const zufall = zufallsfolge(reihe * 53 + 7);
       for (let k = 0; k < 7; k++) {
         const basis = zufall() * (FELDGROESSE + 40);
-        const x = ((((basis + lauf) % (FELDGROESSE + 40)) + FELDGROESSE + 40) % (FELDGROESSE + 40)) - 20;
+        const x =
+          ((((basis + lauf) % (FELDGROESSE + 40)) + FELDGROESSE + 40) % (FELDGROESSE + 40)) - 20;
         const y = reihe * ZELLE + 5 + zufall() * 21;
         const laenge = 10 + zufall() * 10;
         z.moveTo(x, y);
@@ -2319,7 +2592,10 @@ function starteSpiel() {
     for (let sx = -L + 20; sx < L - KROKODIL_KOPF * ZELLE - 2; sx += 8) z.fillRect(sx, -3, 5, 6);
     // Beine
     z.fillStyle = "#24561f";
-    for (const bx of [-L + 26, L - KROKODIL_KOPF * ZELLE - 10]) { z.fillRect(bx, -hoehe / 2 - 3, 6, 4); z.fillRect(bx, hoehe / 2 - 1, 6, 4); }
+    for (const bx of [-L + 26, L - KROKODIL_KOPF * ZELLE - 10]) {
+      z.fillRect(bx, -hoehe / 2 - 3, 6, 4);
+      z.fillRect(bx, hoehe / 2 - 1, 6, 4);
+    }
     // Kopf: rot umrandet, damit klar ist "hier nicht landen"
     const kopfX = L - KROKODIL_KOPF * ZELLE;
     const offen = ruhigerModus ? 0.5 : (Math.sin(jetzt / 320) + 1) / 2;
@@ -2331,7 +2607,10 @@ function starteSpiel() {
     z.fillStyle = "#8e1f1f";
     z.fillRect(kopfX + 4, -offen * 3, KROKODIL_KOPF * ZELLE - 8, offen * 6);
     z.fillStyle = "#f4f2e6";
-    for (let tx = kopfX + 6; tx < L - 4; tx += 5) { z.fillRect(tx, -1 - offen * 3, 2, 2); z.fillRect(tx + 2, offen * 3 - 1, 2, 2); }
+    for (let tx = kopfX + 6; tx < L - 4; tx += 5) {
+      z.fillRect(tx, -1 - offen * 3, 2, 2);
+      z.fillRect(tx + 2, offen * 3 - 1, 2, 2);
+    }
     z.fillStyle = "#f0d040";
     z.fillRect(kopfX + 2, -9, 4, 4);
     z.fillRect(kopfX + 2, 5, 4, 4);
@@ -2344,7 +2623,8 @@ function starteSpiel() {
   /** Schlange auf dem Mittelstreifen: Zickzack-Körper, Kopf in Laufrichtung. */
   function zeichneSchlange(jetzt, vorgriff) {
     if (!schlange) return;
-    const sx = (schlange.x + schlange.richtung * SCHLANGE_TEMPO * tempoFaktor(runde) * vorgriff) * ZELLE;
+    const sx =
+      (schlange.x + schlange.richtung * SCHLANGE_TEMPO * tempoFaktor(runde) * vorgriff) * ZELLE;
     const sy = 6 * ZELLE + ZELLE / 2;
     const L = SCHLANGE_LAENGE * ZELLE;
     z.save();
@@ -2358,13 +2638,16 @@ function starteSpiel() {
         const t = i / 10;
         const px = schlange.richtung > 0 ? sx + t * L : sx + L - t * L;
         const py = sy + Math.sin(t * Math.PI * 3 + (ruhigerModus ? 0 : jetzt / 120)) * 4;
-        if (i === 0) z.moveTo(px, py); else z.lineTo(px, py);
+        if (i === 0) z.moveTo(px, py);
+        else z.lineTo(px, py);
       }
     };
-    pfad(); z.stroke();
+    pfad();
+    z.stroke();
     z.strokeStyle = "#c9b23a";
     z.lineWidth = 6;
-    pfad(); z.stroke();
+    pfad();
+    z.stroke();
     // Kopf vorn
     const kx = schlange.richtung > 0 ? sx + L : sx;
     z.fillStyle = "#9a8424";
@@ -2379,16 +2662,22 @@ function starteSpiel() {
   /** Bonusfliege über einer freien Bucht (summt leicht hin und her). */
   function zeichneFliege(jetzt) {
     if (!fliege) return;
-    const x = BUCHT_SPALTEN[fliege.bucht] * ZELLE + ZELLE / 2 + (ruhigerModus ? 0 : Math.sin(jetzt / 90) * 2);
+    const x =
+      BUCHT_SPALTEN[fliege.bucht] * ZELLE +
+      ZELLE / 2 +
+      (ruhigerModus ? 0 : Math.sin(jetzt / 90) * 2);
     const y = 17 + (ruhigerModus ? 0 : Math.cos(jetzt / 70) * 1.5);
     const blinkt = fliege.rest < 1.2 && !ruhigerModus && Math.floor(jetzt / 120) % 2 === 0;
     if (blinkt) return;
     z.save();
     z.fillStyle = "rgba(230,240,255,0.85)";
-    ellipse(z, x - 4, y - 3, 4, 2.5, -0.5); z.fill();
-    ellipse(z, x + 4, y - 3, 4, 2.5, 0.5); z.fill();
+    ellipse(z, x - 4, y - 3, 4, 2.5, -0.5);
+    z.fill();
+    ellipse(z, x + 4, y - 3, 4, 2.5, 0.5);
+    z.fill();
     z.fillStyle = "#1a1a1a";
-    ellipse(z, x, y, 3, 4.5); z.fill();
+    ellipse(z, x, y, 3, 4.5);
+    z.fill();
     z.fillStyle = "#c0392b";
     z.fillRect(x - 2, y - 4, 1.5, 1.5);
     z.fillRect(x + 0.5, y - 4, 1.5, 1.5);
@@ -2449,8 +2738,14 @@ function starteSpiel() {
     zeichneZeitbalken();
 
     if (bannerRest > 0 && phase !== "bereit") zeichneBanner();
-    if (phase === "bereit") zeichneOverlay(text("TASTE DRÜCKEN", "ZUM START TIPPEN"), text("Pfeiltasten, WASD oder Leertaste", "oder eine Richtung wählen"), jetzt);
-    else if (phase === "pause") zeichneOverlay("PAUSE", text("P oder Leertaste: weiter", "Antippen: weiter"), jetzt);
+    if (phase === "bereit")
+      zeichneOverlay(
+        text("TASTE DRÜCKEN", "ZUM START TIPPEN"),
+        text("Pfeiltasten, WASD oder Leertaste", "oder eine Richtung wählen"),
+        jetzt,
+      );
+    else if (phase === "pause")
+      zeichneOverlay("PAUSE", text("P oder Leertaste: weiter", "Antippen: weiter"), jetzt);
   }
 
   /* ---------- Overlays (Seiten-Design, bewusst im Neon-Stil der Seite) ---------- */
