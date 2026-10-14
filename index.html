@@ -1,0 +1,75 @@
+<!doctype html>
+<html lang="de">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="theme-color" content="#07070f">
+  <link rel="icon" href="./favicon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="./assets/style.css">
+  <title>Froschsprung · Browser-Arcade</title>
+  <meta name="description" content="Bring den Frosch sicher über Straße und Fluss in die Zielbuchten. Mit Tastatur oder Wischgesten spielbar.">
+</head>
+<body style="--ak:var(--pink)">
+  <div class="raster" aria-hidden="true"></div>
+  <a class="skip-link" href="#main">Zum Inhalt springen</a>
+  <header class="kopf"><nav class="container nav" aria-label="Hauptnavigation">
+    <a class="marke" href="./"><span class="logo">▶</span>GAMES</a>
+    <div class="nav-links"><a href="./impressum.html">Impressum</a><a href="./datenschutz.html">Datenschutz</a></div>
+  </nav></header>
+  <main id="main" class="container">
+    <div class="spiel-kopf"><div><h1>FROSCHSPRUNG</h1><p class="unterzeile">Über die Straße, über den Fluss, ab in die Bucht.</p></div></div>
+    <div class="hud">
+      <div class="hud-feld"><div class="label">Punkte</div><div class="wert" id="hud-punkte">0</div></div>
+      <div class="hud-feld"><div class="label">Leben</div><div class="wert" id="hud-leben">3</div></div>
+      <div class="hud-feld"><div class="label">Level</div><div class="wert" id="hud-level">1</div></div>
+      <div class="hud-feld"><div class="label">Rekord</div><div class="wert" id="hud-rekord">0</div></div>
+    </div>
+    <div class="buehne">
+      <!-- Logisch 416x416 Pixel (13x13 Zellen à 32 px). Die CSS-Breite (100%, max. 560px)
+           skaliert das Bild nur; die Spiellogik rechnet immer in Zellen bzw. 416er-Koordinaten. -->
+      <canvas id="leinwand" width="416" height="416" role="img"
+              aria-label="Froschsprung-Spielfeld mit 13 mal 13 Feldern: unten Start-Wiese, darüber Autobahn mit Autos und Lkw, Wiese in der Mitte, Fluss mit Baumstämmen und Seerosenblättern und oben fünf Zielbuchten"
+              style="max-width:560px;margin-inline:auto;image-rendering:pixelated"></canvas>
+    </div>
+    <p class="steuerung"><span class="nur-tastatur">Hüpfen mit <kbd>↑</kbd> <kbd>↓</kbd> <kbd>←</kbd> <kbd>→</kbd> oder <kbd>W</kbd> <kbd>A</kbd> <kbd>S</kbd> <kbd>D</kbd> (pro Sprung einmal drücken, Halten hüpft nicht weiter) · <kbd>P</kbd> Pause · <kbd>Leertaste</kbd> Start/Weiter.</span><span class="nur-touch">Hüpfen mit dem Steuerkreuz unter dem Feld, jeder Tipp ein Sprung. Alternativ auf dem Feld in die gewünschte Richtung wischen, ein Tippen hüpft nach vorn.</span></p>
+    <section style="max-width:420px;margin-top:36px"><h2 style="font-family:var(--pixel);font-weight:400;font-size:.85rem">Lokale Top 3</h2><div id="topliste"></div>
+      <button class="knopf" id="reset" style="margin-top:10px">Spielstand zurücksetzen</button></section>
+    <section class="lernbox"><details open><summary>Anleitung &amp; Regeln</summary>
+      <p><strong>Ziel:</strong> Bring den Frosch über die Straße und den Fluss, bis alle fünf Zielbuchten oben besetzt sind.</p>
+      <ul>
+        <li>Du hast 3 Leben. Ein Fahrzeug überfährt dich, du fällst ins Wasser oder wirst am Rand aus dem Bild geschoben: ein Leben weg.</li>
+        <li>Auf der Straße fahren Autos, Lieferwagen und Lkw. Im Fluss ist nur sicher, was auf einem Baumstamm oder einem Seerosenblatt sitzt. Der Frosch fährt dann mit. Seerosenblätter sinken regelmäßig kurz ab: Vorher wackeln sie und es blubbert, erst wenn sie ganz unter Wasser sind, tragen sie nicht mehr.</li>
+        <li>Fair gemessen: Ein Fahrzeug trifft dich nur, wenn ihr euch wirklich überlappt (die Trefferflächen sind kleiner als die Grafik, Streifschüsse zählen nicht). Im Wasser reicht es, wenn rund ein Drittel des Frosches auf Stamm oder Blatt liegt, der Frosch rastet dann mittig ein.</li>
+        <li>Während des Sprungs bist du sicher, geprüft wird erst nach der Landung. Nach dem Respawn blinkt der Frosch eine Sekunde lang und kann nicht von Fahrzeugen getroffen werden (im Wasser gibt es keinen Schutz).</li>
+        <li>10 Punkte für jede Reihe, die du in diesem Versuch zum ersten Mal erreichst (Zurückhüpfen bringt nichts). 50 Punkte für jede besetzte Bucht.</li>
+        <li>Sind alle fünf Buchten voll, gibt es 100 Bonuspunkte und das nächste Level startet. Es gibt 10 feste Level, danach geht es endlos weiter, immer etwas schneller.</li>
+        <li>Neu ab den späteren Leveln: <strong>Krokodile</strong> schwimmen wie Stämme und tragen dich auf dem Rücken, aber wer auf dem Kopf landet, wird gefressen. Eine <strong>Schlange</strong> kriecht über den Mittelstreifen. Eine <strong>Fliege</strong> taucht ab und zu in einer freien Bucht auf und bringt 200 Bonuspunkte. In der <strong>Nachtfahrt</strong> wird es dunkel.</li>
+        <li>Jeder Frosch hat ein Zeitlimit (Balken unten rechts). Läuft es ab, ist ein Leben weg. Übrige Sekunden bringen beim Erreichen einer Bucht je 2 Punkte.</li>
+        <li>Eine Bucht kann nur einmal pro Level besetzt werden. Wer gegen die Hecke oder eine besetzte Bucht hüpft, bleibt einfach stehen.</li>
+        <li>Erreichte Level kannst du unten in der Level-Auswahl direkt starten.</li>
+        <li>Steuerung: Pfeiltasten oder <code>WASD</code>, am Handy wischen. Drückst du während eines Sprungs schon die nächste Richtung, wird sie vorgemerkt. <code>P</code> pausiert.</li>
+      </ul>
+    </details></section>
+
+    <section class="lernbox"><details><summary>Wie funktioniert der Code?</summary>
+      <p><strong>Ein Raster, drei Zonen.</strong> Das Feld hat 13 mal 13 Zellen. Welche Art von Zeile gerade gemeint ist (<code>zeilenArt</code>), entscheidet über alle Regeln: Auf der Straße zählen Fahrzeuge, im Wasser zählt der Untergrund, oben zählen die Buchten. Der Frosch hat eine Position <code>x</code>, <code>y</code> in Zellen. Beide sind Kommazahlen: <code>x</code> darf im Wasser ein Bruchteil sein, weil Stämme nicht im Zellraster fahren, und mitten im Sprung sind es auch <code>x</code> und <code>y</code>.</p>
+      <p><strong>Wrap-Around.</strong> Jede Bahn hat einen <code>umlauf</code> (Anzahl Objekte mal Abstand). Die Position eines Objekts wird mit Modulo in einen Bereich gefaltet, der links knapp außerhalb des Bildes beginnt. So verschwindet ein Objekt rechts, taucht links wieder auf und es gibt kein <code>push</code> oder <code>delete</code>. Damit niemand sichtbar aufpoppt, muss der Umlauf mindestens Feldbreite plus Objektlänge betragen. Fahrzeuge haben je nach Typ eigene Längen (Kleinwagen 1,3 Zellen, Lkw 3).</p>
+      <p><strong>Weiches Hüpfen mit Puffer.</strong> Ein Sprung dauert etwa 110 Millisekunden. In dieser Zeit wird die Position von <code>vonX/vonY</code> nach <code>zielX/zielY</code> geschoben, mit einer Kurve (<code>hopKurve</code>), die sanft startet und landet. Kommt in dieser Zeit eine neue Eingabe, landet sie in einem Puffer mit genau einem Platz und läuft direkt nach der Landung. Der neueste Wunsch gewinnt, nichts geht verloren und nichts staut sich auf.</p>
+      <p><strong>In der Luft bist du sicher.</strong> <code>froschUrteil</code> gibt solange der Sprung läuft gar kein Urteil ab. Erst nach der Landung wird geprüft, ob unter dem Frosch Asphalt ohne Auto oder ein tragender Stamm liegt. Das ist das klassische Arcade-Gefühl: Ein Sprung zwischen zwei Autos hindurch klappt, wenn er rechtzeitig landet.</p>
+      <p><strong>Faire Hitboxen.</strong> Frosch und Fahrzeug sind für die Kollision Rechtecke, die genau der sichtbaren Grafik entsprechen und dann beide um 28 Prozent verkleinert werden (<code>verkleinern</code>). Zwei Rechtecke überlappen, wenn sie sich auf beiden Achsen überschneiden (<code>rechteckeUeberlappen</code>). Ein Fahrzeug, das nur mit seiner Ecke an der Zellkante am Frosch vorbeistreift, trifft deshalb nicht.</p>
+      <p><strong>Fläche statt Mittelpunkt.</strong> Früher zählte im Wasser nur, was unter der Froschmitte lag. Jetzt misst <code>plattformUeberlappung</code>, wie viel der Froschbreite auf einer Plattform liegt, und ab 35 Prozent trägt sie ihn (<code>findeTraeger</code>). Bei der Landung verschiebt <code>einrasten</code> den Frosch so, dass er ganz auf dem Stamm sitzt, und die Zeichnung gleitet in wenigen Millisekunden dorthin. Danach bekommt er in jedem Schritt exakt das Tempo des Trägers dazu (<code>froschMitfuehren</code>) und klebt auf den Subpixel genau am selben Fleck. Aus dem Bild geschoben wird er erst, wenn sein ganzes Rechteck draußen ist.</p>
+      <p><strong>Seerosen tauchen.</strong> Jede Gruppe hat eine eigene Phase in einem 8-Sekunden-Zyklus: oben, Vorwarnung (wackelt und blubbert, trägt noch), unten (komplett unter Wasser, trägt nicht), wieder oben. Der Versatz pro Gruppe sorgt dafür, dass nie alle gleichzeitig abtauchen. Die Spiellogik kennt nur diese drei Zustände (<code>tauchZustand</code>), die weiche Tiefe dazwischen (<code>tauchSicht</code>) ist reine Optik.</p>
+      <p><strong>Sterben und Schutz.</strong> Nach dem Tod läuft eine halbe Sekunde lang eine Animation (der Frosch blinkt, hat X-Augen und versinkt oder wird platt). Nach dem Respawn blinkt er eine Sekunde lang und ist gegen Fahrzeuge unverwundbar, ertrinken kann er trotzdem, sonst könnte man über den Fluss laufen.</p>
+      <p><strong>Fester Zeitschritt und Vorgriff.</strong> Wie bei Snake sammelt ein Akkumulator die Zeit, die Logik läuft aber in festen Schritten von 1/60 Sekunde. Das Tempo ist damit auf jedem Bildschirm gleich, und Fahrzeuge können nicht durch den Frosch &bdquo;hindurchspringen&ldquo;. Die Zeichnung schiebt alles noch um die Restzeit im Akkumulator weiter, das glättet die Bewegung auf schnellen Bildschirmen.</p>
+      <p><strong>Punkte nur für neue Reihen.</strong> Wir merken uns die am weitesten oben erreichte Reihe (<code>hoechsteReihe</code>). Punkte gibt es nur, wenn der Frosch noch weiter nach oben kommt. Sonst könnte man durch Hin-und-Her-Hüpfen beliebig Punkte sammeln. Nach jedem Leben beginnt der Wert wieder bei der Startreihe.</p>
+      <p><strong>Natürliche Optik per Canvas.</strong> Alles ist selbst gezeichnet, ohne Bilddateien. Das unbewegte Feld (Gras, Asphalt, Wasser, Hecke) wird einmal auf ein Zweit-Canvas gemalt und danach nur noch kopiert; ein Zufallsgenerator mit festem Startwert (<code>zufallsfolge</code>) macht die Textur bei jedem Start gleich. Fahrzeuge werden immer nach rechts fahrend gezeichnet, <code>scale(-1, 1)</code> spiegelt sie für die Gegenrichtung. Die Naturfarben stehen fest im Code (<code>NATUR</code>), weil das Design-System der Seite nur Neonfarben kennt. Texte und Banner nutzen weiter die CSS-Variablen.</p>
+      <p><strong>Level als Änderungsliste.</strong> Die Tabelle <code>LEVEL</code> beschreibt jedes Level nur durch seine Unterschiede: Tempo, Zeitlimit, Schlange ja/nein und pro Zeile ein paar geänderte Werte, z. B. <code>{ 1: { laenge: 2 } }</code> für kürzere Stämme oder <code>{ 3: { krokodile: [1] } }</code>. <code>neueBahnen(level)</code> mischt diese Änderungen mit dem Spread-Operator (<code>{ ...grund, ...aenderung }</code>) über die Grundbahnen. So bleibt jedes Level ein paar Zeilen lang.</p>
+      <p><strong>Krokodil = Stamm mit gefährlichem Ende.</strong> Für die Physik ist ein Krokodil ein ganz normaler Träger: <code>findeTraeger</code> behandelt es wie einen Stamm. Erst danach prüft <code>aufKrokodilKopf</code>, ob die Froschmitte im vorderen Ende liegt, je nach Fahrtrichtung links oder rechts.</p>
+      <p><strong>8-Bit-Raster.</strong> Die Szene wird zuerst auf ein kleines, unsichtbares Canvas gemalt (16 × 16 Pixel pro Zelle) und dann mit <code>imageSmoothingEnabled = false</code> auf das große Canvas vergrößert. Jeder kleine Pixel wird zu einem sichtbaren Block, wie bei einer alten Spielkonsole. Texte und Anzeigen kommen erst danach in voller Auflösung dazu, sonst wären sie unlesbar.</p>
+      <p><strong>Eingabe.</strong> Wischen funktioniert mit Pointer Events wie bei Snake, jede Geste löst genau einen Sprung aus.</p>
+    </details></section>
+  </main>
+  <footer class="fuss"><div class="container fuss-in"><span>Browser-Arcade · Open Source</span><nav aria-label="Rechtliches"><a href="./impressum.html">Impressum</a><a href="./datenschutz.html">Datenschutz</a></nav></div></footer>
+  <script type="module" src="./game.js"></script>
+</body>
+</html>
