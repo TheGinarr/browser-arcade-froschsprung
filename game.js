@@ -660,7 +660,7 @@ export function bewertePosition(bahnen, x, y, zeit, schlange = null) {
 /**
  * Das Urteil für den LAUFENDEN Frosch, mit allen Fairness-Regeln:
  *   - null: Es wird (noch) nicht geurteilt. Das gilt für einen toten Frosch
- *     und für einen Frosch IN DER LUFT (hopT < 1). Klassisches Frogger:
+ *     und für einen Frosch IN DER LUFT (hopT < 1). Klassische Arcade-Regel:
  *     Während des Sprungs kann nichts passieren, geprüft wird erst nach
  *     der Landung. Dadurch fühlt sich ein Sprung zwischen zwei Autos nie
  *     "geklaut" an.
