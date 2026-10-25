@@ -3,9 +3,12 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width,initial-scale=1" />
-    <meta name="theme-color" content="#07070f" />
+    <meta name="theme-color" content="#07070f" media="(prefers-color-scheme: dark)" />
+    <meta name="theme-color" content="#f2f3f9" media="(prefers-color-scheme: light)" />
     <link rel="icon" href="./favicon.svg" type="image/svg+xml" />
-    <link rel="stylesheet" href="./assets/style.css" />
+    <script src="./assets/thema.js?v=20261024"></script>
+    <link rel="stylesheet" href="./assets/style.css?v=20261024w" />
+    <link rel="stylesheet" href="./assets/automat.css?v=20261024" />
     <title>Froschsprung · Browser-Arcade</title>
     <meta
       name="description"
@@ -48,17 +51,44 @@
           <div class="wert" id="hud-rekord">0</div>
         </div>
       </div>
-      <div class="buehne">
-        <!-- Logisch 416x416 Pixel (13x13 Zellen à 32 px). Die CSS-Breite (100%, max. 560px)
+      <div class="automat automat-froschsprung">
+        <div class="aut-kopf" aria-hidden="true">
+          <svg viewBox="0 0 64 64">
+            <ellipse
+              cx="32"
+              cy="38"
+              rx="20"
+              ry="15"
+              fill="#46d160"
+              stroke="#000"
+              stroke-width="2"
+            />
+            <circle cx="22" cy="22" r="7" fill="#46d160" stroke="#000" stroke-width="2" />
+            <circle cx="42" cy="22" r="7" fill="#46d160" stroke="#000" stroke-width="2" />
+            <circle cx="22" cy="21" r="3" fill="#000" />
+            <circle cx="42" cy="21" r="3" fill="#000" />
+            <path d="M22 42q10 7 20 0" fill="none" stroke="#000" stroke-width="2" />
+            <path
+              d="M12 50l-6 8M52 50l6 8"
+              stroke="#2a8a3a"
+              stroke-width="4"
+              stroke-linecap="round"
+            /></svg
+          ><span class="aut-titel">FROSCHSPRUNG<small>ÜBER STRASSE UND FLUSS</small></span>
+        </div>
+        <div class="buehne">
+          <!-- Logisch 416x416 Pixel (13x13 Zellen à 32 px). Die CSS-Breite (100%, max. 560px)
            skaliert das Bild nur; die Spiellogik rechnet immer in Zellen bzw. 416er-Koordinaten. -->
-        <canvas
-          id="leinwand"
-          width="416"
-          height="416"
-          role="img"
-          aria-label="Froschsprung-Spielfeld mit 13 mal 13 Feldern: unten Start-Wiese, darüber Autobahn mit Autos und Lkw, Wiese in der Mitte, Fluss mit Baumstämmen und Seerosenblättern und oben fünf Zielbuchten"
-          style="max-width: 560px; margin-inline: auto; image-rendering: pixelated"
-        ></canvas>
+          <canvas
+            id="leinwand"
+            width="416"
+            height="416"
+            role="img"
+            aria-label="Froschsprung-Spielfeld mit 13 mal 13 Feldern: unten Start-Wiese, darüber Autobahn mit Autos und Lkw, Wiese in der Mitte, Fluss mit Baumstämmen und Seerosenblättern und oben fünf Zielbuchten"
+            style="max-width: 560px; margin-inline: auto; image-rendering: pixelated"
+          ></canvas>
+        </div>
+        <div class="aut-muenze" aria-hidden="true"><span></span><span></span></div>
       </div>
       <p class="steuerung">
         <span class="nur-tastatur"
@@ -71,9 +101,7 @@
         >
       </p>
       <section style="max-width: 420px; margin-top: 36px">
-        <h2 style="font-family: var(--pixel); font-weight: 400; font-size: 0.85rem">
-          Lokale Top 3
-        </h2>
+        <h2 style="font-family: var(--pixel); font-weight: 400; font-size: 0.85rem">Topliste</h2>
         <div id="topliste"></div>
         <button class="knopf" id="reset" style="margin-top: 10px">Spielstand zurücksetzen</button>
       </section>
